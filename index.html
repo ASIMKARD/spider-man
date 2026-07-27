@@ -88,7 +88,8 @@
 (function () {
   'use strict';
   var D = window.SPIDEY_DATA;
-  var FB = 1, SKIP = 2, ALT = 4, GAP = 8;
+  var FB = 1, SKIP = 2, ALT = 4, GAP = 8, RENUM = 16;
+  var INERT = GAP | RENUM;
   var CYCLE = ['unread', 'reading', 'read', 'skip'];
   var GLYPH = { unread: '\u2610', reading: '\u25D0', read: '\u2713', skip: '\u2298' };
   var LABEL = { unread: 'Unread', reading: 'Reading', read: 'Read', skip: 'Skipped' };
@@ -148,7 +149,7 @@
   function counts() {
     var done = 0, total = 0;
     D.issues.forEach(function (it) {
-      if (it[6] & GAP) return;
+      if (it[6] & INERT) return;
       total++;
       var s = state.progress[it[0]];
       if (s === 'read' || s === 'skip') done++;
@@ -253,13 +254,13 @@
   }
 
   function buildRow(it) {
-    var flags = it[6], isGap = !!(flags & GAP);
-    var row = el('div', 'row' + (isGap ? ' gap' : ''));
+    var flags = it[6], isGap = !!(flags & GAP), isRenum = !!(flags & RENUM);
+    var row = el('div', 'row' + (isGap ? ' gap' : '') + (isRenum ? ' renum' : ''));
     row.dataset.k = it[0];
     row._it = it;
 
-    if (isGap) {
-      var m = el('span', 'mark', '\u21B7');
+    if (isGap || isRenum) {
+      var m = el('span', 'mark', isRenum ? '\u27F3' : '\u21B7');
       m.setAttribute('aria-hidden', 'true');
       row.appendChild(m);
       row.appendChild(el('span', 'title', it[7] || it[1]));
@@ -501,7 +502,7 @@
       var hay = (it[1] + ' ' + arc.n + ' ' + (it[7] || '')).toLowerCase();
       if (hay.indexOf(f.q.toLowerCase()) === -1) return false;
     }
-    if (isGap) return true;
+    if (isGap || (it[6] & RENUM)) return true;
     if (f.depth === 'core' && !it[5]) return false;
     if (f.depth === 'essential' && !(it[4] || it[5])) return false;
     if (f.types.indexOf(D.types[it[3]]) === -1) return false;
@@ -514,7 +515,7 @@
     document.querySelectorAll('.row').forEach(function (row) {
       var it = row._it, ok = matches(it, D.arcs[it[2]]);
       row.hidden = !ok;
-      if (ok && !(it[6] & GAP)) shown++;
+      if (ok && !(it[6] & INERT)) shown++;
       if (row._pop && !ok) { row._pop.remove(); row._pop = null; }
     });
     document.querySelectorAll('.arc').forEach(function (a) {
@@ -760,7 +761,7 @@
   function packProgress() {
     var c = canon(), bytes = new Uint8Array(Math.ceil(c.length * 2 / 8));
     c.forEach(function (it, i) {
-      var v = SBIT[state.progress[it[0]]] || 0;
+      var v = (it[6] & INERT) ? 0 : (SBIT[state.progress[it[0]]] || 0);
       if (!v) return;
       var bit = i * 2, idx = bit >> 3, off = 6 - (bit & 7);
       bytes[idx] |= v << off;

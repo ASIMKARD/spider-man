@@ -199,3 +199,7 @@ mark{background:var(--accent);color:#fff;border-radius:2px;padding:0 2px}
 .sync textarea{font-family:var(--mark);font-size:11px;min-height:70px;border:1px solid var(--rule);
  border-radius:var(--radius);padding:6px 8px;background:var(--bg);color:var(--ink);resize:vertical}
 .sync .warn{font-size:12.5px;color:var(--accent)}
+.row.renum{background:var(--surface);color:var(--ink-soft);font-size:12.5px;border-left:4px solid var(--acc);
+ border-top:1px dashed var(--rule);cursor:default;font-style:normal}
+.row.renum .mark{opacity:.5;cursor:default;color:var(--acc)}
+.row.renum .title{font-weight:400;font-family:var(--mark);font-size:12px}
