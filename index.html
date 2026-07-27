@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="spidey" data-erascheme="split">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Spider-Man — Reading Order</title>
+<meta name="description" content="A complete Spider-Man reading-order tracker: 1,859 issues from Amazing Fantasy #15 onward.">
+<meta name="theme-color" content="#1959A7">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <span class="wordmark">Spider-Man</span>
+  <span class="count" id="count">—</span>
+  <span class="pbar" role="progressbar" aria-label="Reading progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="pbar"><i id="pfill" style="width:0%"></i></span>
+  <span class="count" id="pct">0%</span>
+  <button class="iconbtn" id="setBtn" title="Settings" aria-label="Settings" aria-expanded="false" aria-controls="panel">⚙</button>
+  <button class="iconbtn" id="jumpBtn" title="Jump to next unread" aria-label="Jump to next unread">⤓</button>
+  <button class="iconbtn" id="filterBtn" title="Filters" aria-label="Show filters" aria-expanded="false" aria-controls="filters">⚟</button>
+  <button class="iconbtn" id="themeBtn" title="Switch theme" aria-label="Switch theme">◑</button>
+</header>
+
+<section class="filters" id="filters" hidden aria-label="Filters">
+  <div class="frow">
+    <span class="flabel" id="l-depth">Depth</span>
+    <span role="group" aria-labelledby="l-depth" id="depthChips"></span>
+    <span class="tally" id="tally">—</span>
+  </div>
+  <div class="frow">
+    <span class="flabel" id="l-type">Type</span>
+    <span role="group" aria-labelledby="l-type" id="typeChips"></span>
+  </div>
+  <div class="frow">
+    <span class="flabel" id="l-strand">Strands</span>
+    <span role="group" aria-labelledby="l-strand" id="strandChips"></span>
+    <button class="linkbtn" id="strandAll" type="button">all</button>
+    <button class="linkbtn" id="strandNone" type="button">none</button>
+  </div>
+  <div class="frow">
+    <span class="flabel" id="l-view">View</span>
+    <input class="search" id="search" type="search" placeholder="Search issues, arcs, notes…" aria-label="Search">
+    <button class="chip" id="unreadChip" type="button" aria-pressed="false">Unread only</button>
+    <button class="chip" id="cloneChip" type="button" aria-pressed="false" title="Clone Saga reading order">Clone: Epic</button>
+    <button class="chip" id="altChip" type="button" aria-pressed="true">ALT tracks</button>
+    <button class="linkbtn" id="resetBtn" type="button">reset</button>
+  </div>
+</section>
+
+<section class="panel" id="panel" hidden aria-label="Settings">
+  <div class="frow"><span class="flabel">Density</span><span class="seg" id="segDensity"></span>
+    <span class="flabel" style="width:auto">Text</span><span class="seg" id="segFont"></span></div>
+  <div class="frow"><span class="flabel">Marks</span><span class="seg" id="segMark"></span>
+    <span class="flabel" style="width:auto">Era hues</span><span class="seg" id="segEraScheme"></span></div>
+  <div class="frow"><span class="flabel">View</span>
+    <button class="chip" id="tableChip" type="button" aria-pressed="false">Table view</button>
+    <button class="chip" id="badgeChip" type="button" aria-pressed="true">Badges</button>
+    <button class="chip" id="dysChip" type="button" aria-pressed="false">Dyslexia font</button>
+    <button class="chip" id="tapChip" type="button" aria-pressed="false">Large tap targets</button>
+    <button class="chip" id="miniChip" type="button" aria-pressed="true">Mini progress bar</button></div>
+  <div class="frow"><span class="flabel">Pace</span><span class="seg" id="segPace"></span>
+    <span class="pace" id="paceOut">—</span></div>
+  <div class="frow"><span class="flabel">Presets</span>
+    <span class="presetRow" id="presetRow"></span>
+    <button class="linkbtn" id="savePreset" type="button">save current filters</button></div>
+  <div class="frow"><span class="flabel">Data</span>
+    <button class="linkbtn" id="aboutBtn" type="button">about &amp; legend</button>
+    <button class="linkbtn" id="bmBtn" type="button">bookmarks</button>
+    <button class="linkbtn" id="syncBtn" type="button">sync to another device</button>
+    <button class="linkbtn" id="clearBtn" type="button">clear all progress</button></div>
+  <div class="sync" id="syncBox" hidden></div>
+  <div id="aboutBox" hidden style="font-size:13px;max-width:78ch;color:var(--ink-soft)"></div>
+</section>
+<div class="mini" id="mini"><i style="width:0%"></i></div>
+
+<div class="toast" id="toast" hidden role="status" aria-live="polite"><span id="toastMsg"></span><button id="toastAct" type="button" hidden></button></div>
+
+<main id="app" aria-busy="true">
+  <p style="padding:24px 14px;color:var(--ink-soft)">Loading the checklist…</p>
+</main>
+
+<script src="./qrcode.js"></script>
+<script src="./data.js"></script>
+<script>
+(function () {
+  'use strict';
+  var D = window.SPIDEY_DATA;
+  var FB = 1, SKIP = 2, ALT = 4, GAP = 8;
+  var CYCLE = ['unread', 'reading', 'read', 'skip'];
+  var GLYPH = { unread: '\u2610', reading: '\u25D0', read: '\u2713', skip: '\u2298' };
+  var LABEL = { unread: 'Unread', reading: 'Reading', read: 'Read', skip: 'Skipped' };
+  var K = { progress: 'spidey:v1:progress', settings: 'spidey:v1:settings' };
+
+  var ALLSTRANDS = (1 << D.strands.length) - 1;
+  var state = {
+    progress: {},
+    settings: { theme: 'spidey', eraScheme: 'split', cloneOrder: 'epic', collapsed: [] },
+    filters: { depth: 'everything', types: D.types.slice(), strands: ALLSTRANDS,
+               unreadOnly: false, alt: true, q: '' }
+  };
+  var K2 = 'spidey:v1:filters';
+  var K3 = 'spidey:v1:reviews';
+  var MARKS = {
+    box:  { unread: '\u2610', reading: '\u25D0', read: '\u2713', skip: '\u2298' },
+    dot:  { unread: '\u25CB', reading: '\u25D1', read: '\u25CF', skip: '\u2296' },
+    web:  { unread: '\u00B7', reading: '\u25CC', read: '\u2716', skip: '\u2013' }
+  };
+  var PACE = [['light', 5], ['steady', 12], ['heavy', 25], ['marathon', 50]];
+  var view = { density: 'normal', font: 'md', mark: 'box', table: false, badges: true,
+               dys: false, tap: false, mini: true, pace: 12, presets: [] };
+  var reviews = {}, bookmarks = [];
+
+  /* ---------- storage: window.storage only, batched, graceful first run ---------- */
+  var pending = {}, timer = null;
+  function flush() {
+    timer = null;
+    Object.keys(pending).forEach(function (key) {
+      var val = pending[key]; delete pending[key];
+      try { window.storage.set(key, JSON.stringify(val), false); } catch (e) { console.warn('save failed', key, e); }
+    });
+  }
+  function save(key, val) {
+    pending[key] = val;
+    if (timer) clearTimeout(timer);
+    timer = setTimeout(flush, 400);
+  }
+  function load(key, fallback) {
+    if (!window.storage) return Promise.resolve(fallback);
+    return window.storage.get(key, false)
+      .then(function (r) { return r && r.value ? JSON.parse(r.value) : fallback; })
+      .catch(function () { return fallback; });
+  }
+
+  /* ---------- ordering ---------- */
+  function ordered() {
+    var alt = state.settings.cloneOrder === 'published';
+    return D.issues.slice().sort(function (a, b) {
+      var ka = alt && a.length > 8 ? a[8] : a[0];
+      var kb = alt && b.length > 8 ? b[8] : b[0];
+      return ka - kb;
+    });
+  }
+
+  /* ---------- progress ---------- */
+  function counts() {
+    var done = 0, total = 0;
+    D.issues.forEach(function (it) {
+      if (it[6] & GAP) return;
+      total++;
+      var s = state.progress[it[0]];
+      if (s === 'read' || s === 'skip') done++;
+    });
+    return { done: done, total: total };
+  }
+  function paintProgress() {
+    var c = counts(), pc = c.total ? Math.round(c.done / c.total * 100) : 0;
+    document.getElementById('count').textContent = c.done.toLocaleString() + ' / ' + c.total.toLocaleString();
+    document.getElementById('pct').textContent = pc + '%';
+    document.getElementById('pfill').style.width = pc + '%';
+    document.getElementById('pbar').setAttribute('aria-valuenow', pc);
+    paintMini(); paintPace();
+  }
+
+  /* ---------- helpers ---------- */
+  function el(tag, cls, txt) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (txt != null) n.textContent = txt;
+    return n;
+  }
+  function muURL(title) {
+    return 'https://www.marvel.com/search?query=' + encodeURIComponent(title.replace(/\s+—.*$/, ''));
+  }
+
+  /* ---------- render ---------- */
+  function render() {
+    var app = document.getElementById('app');
+    app.textContent = '';
+    var rows = ordered();
+    var frag = document.createDocumentFragment();
+    var curEra = -1, curArc = -1, eraBody = null, arcBox = null;
+    var eraSeen = {}, arcSeen = {};
+
+    rows.forEach(function (it) {
+      var arc = D.arcs[it[2]];
+      if (arc.e !== curEra) {
+        curEra = arc.e; curArc = -1;
+        var era = D.eras[curEra];
+        var sec = el('section', 'era');
+        sec.dataset.e = curEra;
+        var open = state.settings.collapsed.indexOf(curEra) === -1;
+        sec.setAttribute('aria-expanded', open ? 'true' : 'false');
+
+        var repeat = !!eraSeen[curEra]; eraSeen[curEra] = 1;
+        var head = el('button', 'era-head');
+        head.type = 'button';
+        head.setAttribute('aria-controls', 'era-body-' + curEra);
+        head.appendChild(el('span', 'chev', '\u25BE'));
+        var h2 = el('h2', null, era.n); head.appendChild(h2);
+        if (repeat) head.appendChild(el('span', 'cont', 'cont.'));
+        var n = el('span', 'n'); head.appendChild(n);
+        sec.appendChild(head);
+
+        eraBody = el('div', 'era-body');
+        eraBody.id = 'era-body-' + curEra;
+        if (era.intro && !repeat) eraBody.appendChild(el('p', 'era-intro', era.intro));
+        eraBody.hidden = !open;
+        sec.appendChild(eraBody);
+
+        head.addEventListener('click', function () {
+          var eIdx = sec.dataset.e * 1;
+          var nowOpen = sec.getAttribute('aria-expanded') === 'true';
+          document.querySelectorAll('.era[data-e="' + eIdx + '"]').forEach(function (band) {
+            band.setAttribute('aria-expanded', nowOpen ? 'false' : 'true');
+            band.querySelector('.era-body').hidden = nowOpen;
+          });
+          var i = state.settings.collapsed.indexOf(eIdx);
+          if (nowOpen && i === -1) state.settings.collapsed.push(eIdx);
+          if (!nowOpen && i !== -1) state.settings.collapsed.splice(i, 1);
+          save(K.settings, state.settings);
+        });
+        sec._count = n;
+        frag.appendChild(sec);
+      }
+
+      if (it[2] !== curArc) {
+        curArc = it[2];
+        var arcRepeat = !!arcSeen[curArc]; arcSeen[curArc] = 1;
+        arcBox = el('div', 'arc');
+        arcBox.dataset.a = curArc;
+        eraBody.appendChild(arcBox);
+        var ah = el('div', 'arc-head');
+        ah.appendChild(el('h3', null, arc.n + (arcRepeat ? ' \u00B7 cont.' : '')));
+        var bits = [];
+        if (arc.y) bits.push(arc.y);
+        if (arc.ti) bits.push(arc.ti);
+        if (bits.length) ah.appendChild(el('span', 'arc-meta', bits.join(' \u00B7 ')));
+        arcBox.appendChild(ah);
+        if (arc.b && !arcRepeat) arcBox.appendChild(el('p', 'blurb', arc.b));
+      }
+
+      arcBox.appendChild(buildRow(it));
+    });
+
+    app.appendChild(frag);
+    app.setAttribute('aria-busy', 'false');
+    tallyEras();
+    paintProgress();
+    paintMini();
+  }
+
+  function buildRow(it) {
+    var flags = it[6], isGap = !!(flags & GAP);
+    var row = el('div', 'row' + (isGap ? ' gap' : ''));
+    row.dataset.k = it[0];
+    row._it = it;
+
+    if (isGap) {
+      var m = el('span', 'mark', '\u21B7');
+      m.setAttribute('aria-hidden', 'true');
+      row.appendChild(m);
+      row.appendChild(el('span', 'title', it[7] || it[1]));
+      return row;
+    }
+
+    var st = state.progress[it[0]] || 'unread';
+    row.dataset.s = st;
+
+    var btn = el('button', 'mark', MARKS[view.mark][st]);
+    btn.type = 'button';
+    btn.setAttribute('aria-label', it[1] + ' \u2014 ' + LABEL[st]);
+    btn.addEventListener('click', function () {
+      var next = CYCLE[(CYCLE.indexOf(row.dataset.s) + 1) % 4];
+      row.dataset.s = next;
+      btn.textContent = MARKS[view.mark][next];
+      btn.setAttribute('aria-label', it[1] + ' \u2014 ' + LABEL[next]);
+      if (next === 'unread') delete state.progress[it[0]]; else state.progress[it[0]] = next;
+      saveProgress();
+      paintProgress(); tallyEras();
+    });
+    row.appendChild(btn);
+
+    row.appendChild(el('span', 'title', it[1]));
+    row.appendChild(el('span', 'arclab', D.arcs[it[2]].n));
+
+    var badges = el('span', 'badges');
+    if (it[5]) badges.appendChild(el('span', 'b core', '\u2605 core'));
+
+    if (flags & FB) badges.appendChild(noteBadge(row, '\u21BA flashback',
+      it[7] || 'Published later than it reads \u2014 this story fills in earlier events.'));
+    if (flags & ALT) badges.appendChild(noteBadge(row, 'alt',
+      it[7] || 'A separate continuity from the main Peter Parker line.'));
+
+    var bm = el('button', 'b bm', '\u2606');
+    bm.type = 'button';
+    bm.setAttribute('aria-label', 'Bookmark ' + it[1]);
+    bm.setAttribute('aria-pressed', bookmarks.indexOf(it[0]) !== -1 ? 'true' : 'false');
+    bm.addEventListener('click', function () {
+      var i = bookmarks.indexOf(it[0]);
+      if (i === -1) bookmarks.push(it[0]); else bookmarks.splice(i, 1);
+      bm.setAttribute('aria-pressed', i === -1 ? 'true' : 'false');
+      saveProgress();
+    });
+    badges.appendChild(bm);
+
+    var rv = el('button', 'b', '\u270E');
+    rv.type = 'button';
+    rv.setAttribute('aria-label', 'Review ' + it[1]);
+    rv.addEventListener('click', function () { reviewEditor(row, it); });
+    badges.appendChild(rv);
+    if (reviews[it[0]]) row.classList.add('reviewed');
+
+    var mu = el('a', 'b mu', 'read \u2197');
+    mu.href = muURL(it[1]); mu.target = '_blank'; mu.rel = 'noopener';
+    mu.title = 'Search Marvel Unlimited for ' + it[1];
+    badges.appendChild(mu);
+    row.appendChild(badges);
+
+    if (it[7] && !(flags & (FB | ALT))) row.appendChild(el('span', 'subnote', it[7]));
+    return row;
+  }
+
+  function noteBadge(row, label, text) {
+    var b = el('button', 'b note', label);
+    b.type = 'button';
+    b.setAttribute('aria-expanded', 'false');
+    b.addEventListener('click', function () {
+      var open = b.getAttribute('aria-expanded') === 'true';
+      b.setAttribute('aria-expanded', open ? 'false' : 'true');
+      if (open) { if (row._pop) { row._pop.remove(); row._pop = null; } return; }
+      var p = el('p', 'notepop', text);
+      row.after(p); row._pop = p;
+    });
+    return b;
+  }
+
+  function tallyEras() {
+    document.querySelectorAll('.era').forEach(function (sec) {
+      var rows = sec.querySelectorAll('.row:not(.gap)');
+      var done = 0;
+      rows.forEach(function (r) { if (r.dataset.s === 'read' || r.dataset.s === 'skip') done++; });
+      if (sec._count) sec._count.textContent = done + ' / ' + rows.length;
+    });
+  }
+
+
+  /* ---------- filters ---------- */
+  function chip(label, pressed, onClick, cls) {
+    var b = el('button', 'chip' + (cls ? ' ' + cls : ''), label);
+    b.type = 'button';
+    b.setAttribute('aria-pressed', pressed ? 'true' : 'false');
+    b.addEventListener('click', function () {
+      var now = b.getAttribute('aria-pressed') === 'true';
+      b.setAttribute('aria-pressed', now ? 'false' : 'true');
+      onClick(!now);
+      saveFilters(); applyFilters();
+    });
+    return b;
+  }
+  function saveFilters() { save(K2, state.filters); }
+
+  function buildFilterUI() {
+    var f = state.filters;
+
+    var dWrap = document.getElementById('depthChips');
+    [['core', 'Barebones', D.counts.core], ['essential', 'Essential', D.counts.essential],
+     ['everything', 'Everything', D.counts.total]].forEach(function (d) {
+      var b = el('button', 'chip', d[1] + ' \u00B7 ' + d[2].toLocaleString());
+      b.type = 'button';
+      b.setAttribute('aria-pressed', f.depth === d[0] ? 'true' : 'false');
+      b.addEventListener('click', function () {
+        f.depth = d[0];
+        dWrap.querySelectorAll('.chip').forEach(function (x) { x.setAttribute('aria-pressed', 'false'); });
+        b.setAttribute('aria-pressed', 'true');
+        saveFilters(); applyFilters();
+      });
+      dWrap.appendChild(b);
+    });
+
+    var tWrap = document.getElementById('typeChips');
+    D.types.forEach(function (t) {
+      tWrap.appendChild(chip(t.toLowerCase(), f.types.indexOf(t) !== -1, function (on) {
+        var i = f.types.indexOf(t);
+        if (on && i === -1) f.types.push(t);
+        if (!on && i !== -1) f.types.splice(i, 1);
+      }));
+    });
+
+    var sWrap = document.getElementById('strandChips');
+    D.strands.forEach(function (name, i) {
+      sWrap.appendChild(chip(name, !!(f.strands >> i & 1), function (on) {
+        if (on) f.strands |= (1 << i); else f.strands &= ~(1 << i);
+      }, 'strand'));
+    });
+    document.getElementById('strandAll').addEventListener('click', function () {
+      f.strands = ALLSTRANDS; syncStrandChips(); saveFilters(); applyFilters();
+    });
+    document.getElementById('strandNone').addEventListener('click', function () {
+      f.strands = 0; syncStrandChips(); saveFilters(); applyFilters();
+    });
+
+    var eraSel = el('select', 'search');
+    eraSel.id = 'eraSel';
+    eraSel.setAttribute('aria-label', 'Filter by era');
+    var optAll = el('option', null, 'All eras'); optAll.value = '';
+    eraSel.appendChild(optAll);
+    D.eras.forEach(function (e, i) {
+      var o = el('option', null, e.n); o.value = i;
+      if (f.era === i) o.selected = true;
+      eraSel.appendChild(o);
+    });
+    eraSel.addEventListener('change', function () {
+      f.era = eraSel.value === '' ? null : eraSel.value * 1;
+      saveFilters(); applyFilters();
+    });
+    document.querySelector('#typeChips').after(eraSel);
+
+    var q = document.getElementById('search');
+    q.value = f.q || '';
+    var deb;
+    q.addEventListener('input', function () {
+      clearTimeout(deb);
+      deb = setTimeout(function () { f.q = q.value.trim(); saveFilters(); applyFilters(); }, 180);
+    });
+
+    var uc = document.getElementById('unreadChip');
+    uc.setAttribute('aria-pressed', f.unreadOnly ? 'true' : 'false');
+    uc.addEventListener('click', function () {
+      f.unreadOnly = !f.unreadOnly;
+      uc.setAttribute('aria-pressed', f.unreadOnly ? 'true' : 'false');
+      saveFilters(); applyFilters();
+    });
+
+    var ac = document.getElementById('altChip');
+    ac.setAttribute('aria-pressed', f.alt ? 'true' : 'false');
+    ac.addEventListener('click', function () {
+      f.alt = !f.alt;
+      ac.setAttribute('aria-pressed', f.alt ? 'true' : 'false');
+      saveFilters(); applyFilters();
+    });
+
+    var cc = document.getElementById('cloneChip');
+    function paintClone() {
+      var pub = state.settings.cloneOrder === 'published';
+      cc.textContent = 'Clone: ' + (pub ? 'As published' : 'Epic');
+      cc.setAttribute('aria-pressed', pub ? 'true' : 'false');
+    }
+    paintClone();
+    cc.addEventListener('click', function () {
+      state.settings.cloneOrder = state.settings.cloneOrder === 'epic' ? 'published' : 'epic';
+      paintClone(); save(K.settings, state.settings);
+      render(); applyFilters();
+    });
+
+    document.getElementById('resetBtn').addEventListener('click', function () {
+      state.filters = { depth: 'everything', types: D.types.slice(), strands: ALLSTRANDS,
+                        unreadOnly: false, alt: true, q: '', era: null };
+      saveFilters();
+      document.getElementById('search').value = '';
+      document.getElementById('eraSel').value = '';
+      syncAllChips();
+      applyFilters();
+    });
+
+    var fb = document.getElementById('filterBtn');
+    fb.addEventListener('click', function () {
+      var bar = document.getElementById('filters');
+      var open = !bar.hidden;
+      bar.hidden = open;
+      fb.setAttribute('aria-expanded', open ? 'false' : 'true');
+    });
+  }
+
+  function syncStrandChips() {
+    document.querySelectorAll('#strandChips .chip').forEach(function (b, i) {
+      b.setAttribute('aria-pressed', (state.filters.strands >> i & 1) ? 'true' : 'false');
+    });
+  }
+  function syncAllChips() {
+    var f = state.filters;
+    document.querySelectorAll('#depthChips .chip').forEach(function (b, i) {
+      b.setAttribute('aria-pressed', ['core', 'essential', 'everything'][i] === f.depth ? 'true' : 'false');
+    });
+    document.querySelectorAll('#typeChips .chip').forEach(function (b, i) {
+      b.setAttribute('aria-pressed', f.types.indexOf(D.types[i]) !== -1 ? 'true' : 'false');
+    });
+    syncStrandChips();
+    document.getElementById('unreadChip').setAttribute('aria-pressed', f.unreadOnly ? 'true' : 'false');
+    document.getElementById('altChip').setAttribute('aria-pressed', f.alt ? 'true' : 'false');
+  }
+
+  function matches(it, arc) {
+    var f = state.filters, isGap = !!(it[6] & GAP);
+    if (f.era != null && arc.e !== f.era) return false;
+    if (!(arc.s & f.strands)) return false;
+    if (!f.alt && (it[6] & ALT)) return false;
+    if (f.q) {
+      var hay = (it[1] + ' ' + arc.n + ' ' + (it[7] || '')).toLowerCase();
+      if (hay.indexOf(f.q.toLowerCase()) === -1) return false;
+    }
+    if (isGap) return true;
+    if (f.depth === 'core' && !it[5]) return false;
+    if (f.depth === 'essential' && !(it[4] || it[5])) return false;
+    if (f.types.indexOf(D.types[it[3]]) === -1) return false;
+    if (f.unreadOnly && state.progress[it[0]]) return false;
+    return true;
+  }
+
+  function applyFilters() {
+    var shown = 0;
+    document.querySelectorAll('.row').forEach(function (row) {
+      var it = row._it, ok = matches(it, D.arcs[it[2]]);
+      row.hidden = !ok;
+      if (ok && !(it[6] & GAP)) shown++;
+      if (row._pop && !ok) { row._pop.remove(); row._pop = null; }
+    });
+    document.querySelectorAll('.arc').forEach(function (a) {
+      a.hidden = !a.querySelector('.row:not([hidden])');
+    });
+    document.querySelectorAll('.era').forEach(function (e) {
+      e.hidden = !e.querySelector('.arc:not([hidden])');
+    });
+    var t = document.getElementById('tally');
+    if (t) t.textContent = shown.toLocaleString() + ' shown';
+    var app = document.getElementById('app');
+    var none = app.querySelector('.empty');
+    if (!shown) {
+      if (!none) { none = el('p', 'empty', 'Nothing matches these filters.'); app.appendChild(none); }
+    } else if (none) none.remove();
+  }
+
+
+  /* ---------- settings ---------- */
+  function saveProgress() { save(K.progress, { p: state.progress, b: bookmarks }); }
+  function saveView() { state.settings.view = view; save(K.settings, state.settings); }
+
+  function applyView() {
+    var r = document.documentElement;
+    r.dataset.table = view.table ? '1' : '0';
+    r.dataset.badges = view.badges ? '1' : '0';
+    r.dataset.dys = view.dys ? '1' : '0';
+    r.dataset.tap = view.tap ? '1' : '0';
+    r.style.setProperty('--dens', { compact: '4px', normal: '9px', roomy: '14px' }[view.density]);
+    r.style.setProperty('--fs', { sm: '13.5px', md: '15px', lg: '17px' }[view.font]);
+    var m = document.getElementById('mini');
+    if (m) m.hidden = !view.mini;
+    paintPace();
+  }
+
+  function seg(host, opts, current, onPick) {
+    host.textContent = '';
+    opts.forEach(function (o) {
+      var b = el('button', null, o[1]);
+      b.type = 'button';
+      b.setAttribute('aria-pressed', o[0] === current() ? 'true' : 'false');
+      b.addEventListener('click', function () {
+        onPick(o[0]);
+        host.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', 'false'); });
+        b.setAttribute('aria-pressed', 'true');
+        saveView(); applyView();
+      });
+      host.appendChild(b);
+    });
+  }
+
+  function paintPace() {
+    var c = counts(), left = c.total - c.done, out = document.getElementById('paceOut');
+    if (!out) return;
+    if (!left) { out.textContent = 'All caught up.'; return; }
+    var weeks = Math.ceil(left / view.pace);
+    var done = new Date(Date.now() + weeks * 7 * 864e5);
+    out.innerHTML = '<b>' + left.toLocaleString() + '</b> left \u00B7 ' + weeks + ' weeks at ' +
+      view.pace + '/week \u00B7 done ' + done.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+  }
+
+  function paintMini() {
+    var c = counts(), m = document.getElementById('mini');
+    if (m && m.firstElementChild) m.firstElementChild.style.width = (c.total ? c.done / c.total * 100 : 0) + '%';
+  }
+
+  function buildSettingsUI() {
+    seg(document.getElementById('segDensity'),
+      [['compact', 'compact'], ['normal', 'normal'], ['roomy', 'roomy']],
+      function () { return view.density; }, function (v) { view.density = v; });
+    seg(document.getElementById('segFont'),
+      [['sm', 'S'], ['md', 'M'], ['lg', 'L']],
+      function () { return view.font; }, function (v) { view.font = v; });
+    seg(document.getElementById('segMark'),
+      [['box', '\u2610 \u2713'], ['dot', '\u25CB \u25CF'], ['web', '\u00B7 \u2716']],
+      function () { return view.mark; }, function (v) { view.mark = v; repaintMarks(); });
+    seg(document.getElementById('segEraScheme'),
+      [['split', 'red + blue'], ['mono', 'all red']],
+      function () { return state.settings.eraScheme; },
+      function (v) { state.settings.eraScheme = v; document.documentElement.dataset.erascheme = v; save(K.settings, state.settings); });
+    seg(document.getElementById('segPace'),
+      PACE.map(function (p) { return [p[1], p[0]]; }),
+      function () { return view.pace; }, function (v) { view.pace = v; });
+
+    [['tableChip', 'table'], ['badgeChip', 'badges'], ['dysChip', 'dys'],
+     ['tapChip', 'tap'], ['miniChip', 'mini']].forEach(function (pair) {
+      var b = document.getElementById(pair[0]);
+      b.setAttribute('aria-pressed', view[pair[1]] ? 'true' : 'false');
+      b.addEventListener('click', function () {
+        view[pair[1]] = !view[pair[1]];
+        b.setAttribute('aria-pressed', view[pair[1]] ? 'true' : 'false');
+        saveView(); applyView();
+      });
+    });
+
+    document.getElementById('setBtn').addEventListener('click', function () {
+      var p = document.getElementById('panel'), open = !p.hidden;
+      p.hidden = open;
+      this.setAttribute('aria-expanded', open ? 'false' : 'true');
+      if (!open) paintPace();
+    });
+
+    document.getElementById('savePreset').addEventListener('click', function () {
+      var name = prompt('Name this filter preset');
+      if (!name) return;
+      view.presets.push({ n: name, f: JSON.parse(JSON.stringify(state.filters)) });
+      saveView(); paintPresets();
+    });
+    paintPresets();
+
+    document.getElementById('aboutBtn').addEventListener('click', function () {
+      var box = document.getElementById('aboutBox');
+      box.hidden = !box.hidden;
+      if (!box.hidden && !box.childElementCount) {
+        D.legend.forEach(function (l) {
+          var p = el('p', null, l[1] ? l[0] + ' \u2014 ' + l[1] : l[0]);
+          p.style.margin = '2px 0'; box.appendChild(p);
+        });
+        var h = el('p', null, 'Maintenance notes'); h.style.cssText = 'margin:10px 0 2px;font-weight:600';
+        box.appendChild(h);
+        D.maintenance.forEach(function (m) {
+          var p = el('p', null, m); p.style.margin = '2px 0'; box.appendChild(p);
+        });
+      }
+    });
+
+    document.getElementById('bmBtn').addEventListener('click', function () {
+      if (!bookmarks.length) { alert('No bookmarks yet. Tap the \u2606 on any issue.'); return; }
+      var next = bookmarks[0];
+      var row = document.querySelector('.row[data-k="' + next + '"]');
+      if (row) { row.scrollIntoView({ block: 'center' }); flash(row); }
+    });
+
+    document.getElementById('syncBtn').addEventListener('click', openSync);
+
+    document.getElementById('clearBtn').addEventListener('click', function () {
+      if (!confirm('Clear all read/reading/skip marks? Reviews and bookmarks are kept.')) return;
+      state.progress = {};
+      saveProgress();
+      document.querySelectorAll('.row:not(.gap)').forEach(function (r) {
+        r.dataset.s = 'unread';
+        r.querySelector('.mark').textContent = MARKS[view.mark].unread;
+      });
+      paintProgress(); tallyEras(); applyFilters();
+    });
+
+    document.getElementById('jumpBtn').addEventListener('click', function () {
+      var rows = document.querySelectorAll('.row:not(.gap):not([hidden])');
+      for (var i = 0; i < rows.length; i++) {
+        if (rows[i].dataset.s === 'unread') { rows[i].scrollIntoView({ block: 'center' }); flash(rows[i]); return; }
+      }
+      alert('Nothing unread in the current view.');
+    });
+  }
+
+  function flash(row) {
+    row.style.transition = 'outline-color .8s ease';
+    row.style.outline = '2px solid var(--action)';
+    setTimeout(function () { row.style.outlineColor = 'transparent'; }, 60);
+    setTimeout(function () { row.style.outline = ''; row.style.transition = ''; }, 1000);
+  }
+
+  function paintPresets() {
+    var host = document.getElementById('presetRow');
+    host.textContent = '';
+    view.presets.forEach(function (p, i) {
+      var b = el('button', 'chip', p.n);
+      b.type = 'button';
+      b.addEventListener('click', function () {
+        state.filters = Object.assign(state.filters, JSON.parse(JSON.stringify(p.f)));
+        saveFilters(); syncAllChips();
+        document.getElementById('search').value = state.filters.q || '';
+        applyFilters();
+      });
+      var x = el('button', 'linkbtn', '\u00D7');
+      x.type = 'button';
+      x.setAttribute('aria-label', 'Delete preset ' + p.n);
+      x.addEventListener('click', function () { view.presets.splice(i, 1); saveView(); paintPresets(); });
+      host.appendChild(b); host.appendChild(x);
+    });
+    if (!view.presets.length) host.appendChild(el('span', 'pace', 'none saved'));
+  }
+
+  function repaintMarks() {
+    var g = MARKS[view.mark];
+    document.querySelectorAll('.row:not(.gap)').forEach(function (r) {
+      r.querySelector('.mark').textContent = g[r.dataset.s || 'unread'];
+    });
+  }
+
+  /* ---------- reviews + bookmarks ---------- */
+  function reviewEditor(row, it) {
+    if (row._rev) { row._rev.remove(); row._rev = null; return; }
+    var cur = reviews[it[0]] || { r: 0, t: '' };
+    var box = el('div', 'review');
+    var stars = el('div', 'stars');
+    for (var i = 1; i <= 5; i++) (function (n) {
+      var b = el('button', null, '\u2605');
+      b.type = 'button';
+      b.setAttribute('aria-label', n + ' star' + (n > 1 ? 's' : ''));
+      b.setAttribute('aria-pressed', n <= cur.r ? 'true' : 'false');
+      b.addEventListener('click', function () {
+        cur.r = (cur.r === n) ? 0 : n;
+        stars.querySelectorAll('button').forEach(function (x, j) {
+          x.setAttribute('aria-pressed', (j + 1) <= cur.r ? 'true' : 'false');
+        });
+        commit();
+      });
+      stars.appendChild(b);
+    })(i);
+    var ta = el('textarea');
+    ta.value = cur.t || '';
+    ta.placeholder = 'Notes on ' + it[1];
+    var deb;
+    ta.addEventListener('input', function () {
+      clearTimeout(deb);
+      deb = setTimeout(function () { cur.t = ta.value; commit(); }, 300);
+    });
+    function commit() {
+      if (!cur.r && !cur.t) delete reviews[it[0]]; else reviews[it[0]] = cur;
+      save(K3, reviews);
+      row.classList.toggle('reviewed', !!reviews[it[0]]);
+    }
+    box.appendChild(stars); box.appendChild(ta);
+    row.after(box); row._rev = box;
+    ta.focus();
+  }
+
+
+  /* ---------- QR sync ---------- */
+  var CANON = null;
+  function canon() {
+    if (!CANON) CANON = D.issues.slice().sort(function (a, b) { return a[0] - b[0]; });
+    return CANON;
+  }
+  function dataVersion() {
+    var c = canon();
+    return c.length + '-' + c[0][0] + '-' + c[c.length - 1][0];
+  }
+  var SBIT = { read: 1, reading: 2, skip: 3 };
+  var SNAME = { 1: 'read', 2: 'reading', 3: 'skip' };
+
+  function packProgress() {
+    var c = canon(), bytes = new Uint8Array(Math.ceil(c.length * 2 / 8));
+    c.forEach(function (it, i) {
+      var v = SBIT[state.progress[it[0]]] || 0;
+      if (!v) return;
+      var bit = i * 2, idx = bit >> 3, off = 6 - (bit & 7);
+      bytes[idx] |= v << off;
+    });
+    var bin = '';
+    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin);
+  }
+  function unpackProgress(b64) {
+    var bin = atob(b64), c = canon(), out = {};
+    c.forEach(function (it, i) {
+      var bit = i * 2, idx = bit >> 3, off = 6 - (bit & 7);
+      var v = (bin.charCodeAt(idx) >> off) & 3;
+      if (v) out[it[0]] = SNAME[v];
+    });
+    return out;
+  }
+  function makePayload() {
+    var body = { v: 1, d: dataVersion(), p: packProgress(), b: bookmarks,
+                 s: state.settings, f: state.filters, r: reviews };
+    return 'SPDY1:' + btoa(unescape(encodeURIComponent(JSON.stringify(body))));
+  }
+  function readPayload(txt) {
+    txt = (txt || '').trim();
+    if (txt.indexOf('SPDY1:') !== 0) throw new Error('That is not a Spider-Man sync code.');
+    var body = JSON.parse(decodeURIComponent(escape(atob(txt.slice(6)))));
+    if (body.d !== dataVersion()) {
+      throw new Error('That code was made from a different version of the checklist, so the ' +
+        'positions would not line up. Re-export from the other device after updating it.');
+    }
+    return body;
+  }
+
+  function openSync() {
+    var box = document.getElementById('syncBox');
+    if (!box.hidden) { box.hidden = true; return; }
+    box.hidden = false; box.textContent = '';
+    var code = makePayload();
+
+    var qrWrap = el('div');
+    var fits = false;
+    try {
+      var q = qrcode(0, 'L');
+      q.addData(code);
+      q.make();
+      qrWrap.innerHTML = q.createSvgTag({ scalable: true });
+      fits = true;
+    } catch (e) { fits = false; }
+    if (fits) {
+      box.appendChild(qrWrap);
+      box.appendChild(el('p', 'pace', 'Scan on the other device, or copy the code below. ' +
+        code.length.toLocaleString() + ' characters.'));
+    } else {
+      box.appendChild(el('p', 'warn', 'Too much data for a QR code \u2014 mostly review text. ' +
+        'Copy the code below and paste it on the other device. ' + code.length.toLocaleString() + ' characters.'));
+    }
+
+    var out = el('textarea');
+    out.value = code; out.readOnly = true;
+    out.setAttribute('aria-label', 'Your sync code');
+    box.appendChild(out);
+    var copy = el('button', 'chip', 'copy code');
+    copy.type = 'button';
+    copy.addEventListener('click', function () {
+      out.select();
+      if (navigator.clipboard) navigator.clipboard.writeText(code).then(function () { toast('Copied.'); });
+      else { document.execCommand('copy'); toast('Copied.'); }
+    });
+    box.appendChild(copy);
+
+    box.appendChild(el('p', 'pace', 'To bring data in, paste a code here:'));
+    var inp = el('textarea');
+    inp.placeholder = 'SPDY1:\u2026';
+    inp.setAttribute('aria-label', 'Paste a sync code');
+    box.appendChild(inp);
+    var imp = el('button', 'chip', 'import');
+    imp.type = 'button';
+    imp.addEventListener('click', function () {
+      var body;
+      try { body = readPayload(inp.value); }
+      catch (e) { toast(e.message); return; }
+      if (!confirm('Replace this device\u2019s progress, reviews and settings with the pasted data?')) return;
+      state.progress = unpackProgress(body.p);
+      bookmarks = body.b || [];
+      reviews = body.r || {};
+      state.settings = Object.assign(state.settings, body.s || {});
+      state.filters = Object.assign(state.filters, body.f || {});
+      view = Object.assign(view, state.settings.view || {});
+      saveProgress(); save(K3, reviews); save(K.settings, state.settings); saveFilters();
+      document.documentElement.dataset.theme = state.settings.theme;
+      document.documentElement.dataset.erascheme = state.settings.eraScheme;
+      applyView(); render(); syncAllChips(); applyFilters();
+      box.hidden = true;
+      toast('Imported.');
+    });
+    box.appendChild(imp);
+  }
+
+  /* ---------- theme ---------- */
+  document.getElementById('themeBtn').addEventListener('click', function () {
+    var next = state.settings.theme === 'spidey' ? 'newsprint' : 'spidey';
+    state.settings.theme = next;
+    document.documentElement.dataset.theme = next;
+    document.querySelector('meta[name=theme-color]').content = next === 'spidey' ? '#1959A7' : '#322A21';
+    save(K.settings, state.settings);
+  });
+
+  /* ---------- boot ---------- */
+  Promise.all([load(K.progress, {}), load(K.settings, state.settings), load(K2, state.filters), load(K3, {})])
+    .then(function (r) {
+      var pr = r[0] || {};
+      if (pr && pr.p) { state.progress = pr.p; bookmarks = pr.b || []; }
+      else { state.progress = pr; }
+      state.settings = Object.assign(state.settings, r[1] || {});
+      state.filters = Object.assign(state.filters, r[2] || {});
+      reviews = r[3] || {};
+      view = Object.assign(view, state.settings.view || {});
+      applyView();
+      document.documentElement.dataset.theme = state.settings.theme;
+      document.documentElement.dataset.erascheme = state.settings.eraScheme;
+      buildFilterUI();
+      buildSettingsUI();
+      render();
+      applyFilters();
+    });
+
+  /* ---------- toast ---------- */
+  var toastT;
+  function toast(msg, actionLabel, onAction) {
+    var t = document.getElementById('toast'), a = document.getElementById('toastAct');
+    document.getElementById('toastMsg').textContent = msg;
+    a.hidden = !actionLabel;
+    if (actionLabel) { a.textContent = actionLabel; a.onclick = onAction; }
+    t.hidden = false;
+    clearTimeout(toastT);
+    if (!actionLabel) toastT = setTimeout(function () { t.hidden = true; }, 3200);
+  }
+
+  /* ---------- offline + install ---------- */
+  function netState() {
+    document.body.classList.toggle('offline', !navigator.onLine);
+  }
+  window.addEventListener('online', function () { netState(); toast('Back online.'); });
+  window.addEventListener('offline', function () { netState(); toast('Offline \u2014 everything still works.'); });
+  netState();
+
+  var deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferredPrompt = e;
+    toast('Install Spider-Man for offline reading?', 'Install', function () {
+      document.getElementById('toast').hidden = true;
+      deferredPrompt.prompt();
+      deferredPrompt = null;
+    });
+  });
+  window.addEventListener('appinstalled', function () { toast('Installed.'); });
+
+  /* ---------- service worker + update flow ---------- */
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('./sw.js', { scope: './' }).then(function (reg) {
+        reg.addEventListener('updatefound', function () {
+          var sw = reg.installing;
+          if (!sw) return;
+          sw.addEventListener('statechange', function () {
+            if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+              toast('A new version is ready.', 'Reload', function () {
+                sw.postMessage({ type: 'SKIP_WAITING' });
+                location.reload();
+              });
+            }
+          });
+        });
+      }).catch(function () {});
+    });
+  }
+})();
+</script>
+</body>
+</html>

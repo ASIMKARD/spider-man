@@ -1,0 +1,16 @@
+{
+  "name": "Spider-Man — Reading Order",
+  "short_name": "Spider-Man",
+  "description": "A complete Spider-Man reading-order tracker, from Amazing Fantasy #15 onward.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F6F9FD",
+  "theme_color": "#1959A7",
+  "icons": [
+    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
