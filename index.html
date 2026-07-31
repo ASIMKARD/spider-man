@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Spider-Man — Reading Order</title>
-<meta name="description" content="A complete Spider-Man reading-order tracker: 1,859 issues from Amazing Fantasy #15 onward.">
+<meta name="description" content="A complete Spider-Man reading-order tracker: 4,664 issues from Amazing Fantasy #15 onward.">
 <meta name="theme-color" content="#1959A7">
 <link rel="manifest" href="./manifest.json">
 <link rel="icon" href="./icons/icon-192.png">
@@ -45,6 +45,7 @@
     <input class="search" id="search" type="search" placeholder="Search issues, arcs, notes…" aria-label="Search">
     <button class="chip" id="unreadChip" type="button" aria-pressed="false">Unread only</button>
     <button class="chip" id="cloneChip" type="button" aria-pressed="false" title="Clone Saga reading order">Clone: Epic</button>
+    <button class="chip" id="orderChip" type="button" aria-pressed="false" title="Reading order vs Arc Master timeline order">Order: Reading</button>
     <button class="chip" id="altChip" type="button" aria-pressed="true">ALT tracks</button>
     <button class="linkbtn" id="resetBtn" type="button">reset</button>
   </div>
@@ -98,8 +99,8 @@
   var ALLSTRANDS = (1 << D.strands.length) - 1;
   var state = {
     progress: {},
-    settings: { theme: 'spidey', eraScheme: 'split', cloneOrder: 'epic', collapsed: [] },
-    filters: { depth: 'everything', types: D.types.slice(), strands: ALLSTRANDS,
+    settings: { theme: 'spidey', eraScheme: 'split', cloneOrder: 'epic', viewOrder: 'reading', collapsed: [] },
+    filters: { depth: 'everything', types: D.types.slice(), strands: ALLSTRANDS, sv: D.strands.length,
                unreadOnly: false, alt: true, q: '' }
   };
   var K2 = 'spidey:v1:filters';
@@ -114,13 +115,55 @@
                dys: false, tap: false, mini: true, pace: 12, presets: [] };
   var reviews = {}, bookmarks = [];
 
+  /* ---------- storage shim ----------
+     window.storage is provided by the Claude artifact host. On a plain web host
+     (GitHub Pages) it does not exist, so nothing would persist. This installs an
+     API-compatible localStorage-backed implementation ONLY when it is missing —
+     inside Claude this block does nothing and the real storage is used. The app
+     code below still never touches localStorage directly. */
+  if (!window.storage) {
+    var LS = null;
+    try { LS = window.localStorage; LS.setItem('__t', '1'); LS.removeItem('__t'); }
+    catch (e) { LS = null; }
+    var MEM = {};
+    var P = function (v) { return Promise.resolve(v); };
+    window.storage = {
+      get: function (k) {
+        try { var v = LS ? LS.getItem(k) : MEM[k];
+              return P(v == null ? null : { key: k, value: v, shared: false }); }
+        catch (e) { return P(null); }
+      },
+      set: function (k, v) {
+        try { if (LS) LS.setItem(k, v); else MEM[k] = v;
+              return P({ key: k, value: v, shared: false }); }
+        catch (e) { return P(null); }
+      },
+      delete: function (k) {
+        try { if (LS) LS.removeItem(k); else delete MEM[k];
+              return P({ key: k, deleted: true, shared: false }); }
+        catch (e) { return P(null); }
+      },
+      list: function (prefix) {
+        try {
+          var keys = [];
+          if (LS) { for (var i = 0; i < LS.length; i++) keys.push(LS.key(i)); }
+          else { keys = Object.keys(MEM); }
+          if (prefix) keys = keys.filter(function (k) { return k.indexOf(prefix) === 0; });
+          return P({ keys: keys, prefix: prefix, shared: false });
+        } catch (e) { return P({ keys: [], shared: false }); }
+      }
+    };
+  }
+
   /* ---------- storage: window.storage only, batched, graceful first run ---------- */
   var pending = {}, timer = null;
   function flush() {
     timer = null;
     Object.keys(pending).forEach(function (key) {
       var val = pending[key]; delete pending[key];
-      try { window.storage.set(key, JSON.stringify(val), false); } catch (e) { console.warn('save failed', key, e); }
+      try { var p = window.storage.set(key, JSON.stringify(val), false);
+            if (p && p.catch) p.catch(function (e) { console.warn('save failed', key, e); }); }
+      catch (e) { console.warn('save failed', key, e); }
     });
   }
   function save(key, val) {
@@ -138,7 +181,9 @@
   /* ---------- ordering ---------- */
   function ordered() {
     var alt = state.settings.cloneOrder === 'published';
+    var tl = state.settings.viewOrder === 'timeline';
     return D.issues.slice().sort(function (a, b) {
+      if (tl && a[2] !== b[2]) return a[2] - b[2];
       var ka = alt && a.length > 8 ? a[8] : a[0];
       var kb = alt && b.length > 8 ? b[8] : b[0];
       return ka - kb;
@@ -456,8 +501,21 @@
       render(); applyFilters();
     });
 
+    var oc = document.getElementById('orderChip');
+    function paintOrder() {
+      var tl = state.settings.viewOrder === 'timeline';
+      oc.textContent = 'Order: ' + (tl ? 'Timeline' : 'Reading');
+      oc.setAttribute('aria-pressed', tl ? 'true' : 'false');
+    }
+    paintOrder();
+    oc.addEventListener('click', function () {
+      state.settings.viewOrder = state.settings.viewOrder === 'reading' ? 'timeline' : 'reading';
+      paintOrder(); save(K.settings, state.settings);
+      render(); applyFilters();
+    });
+
     document.getElementById('resetBtn').addEventListener('click', function () {
-      state.filters = { depth: 'everything', types: D.types.slice(), strands: ALLSTRANDS,
+      state.filters = { depth: 'everything', types: D.types.slice(), strands: ALLSTRANDS, sv: D.strands.length,
                         unreadOnly: false, alt: true, q: '', era: null };
       saveFilters();
       document.getElementById('search').value = '';
@@ -875,8 +933,36 @@
       var pr = r[0] || {};
       if (pr && pr.p) { state.progress = pr.p; bookmarks = pr.b || []; }
       else { state.progress = pr; }
+      // one-time: rows re-keyed since the last deploy would orphan their marks
+      if (D.keymap && !(r[1] || {}).keymapped) {
+        var mv = 0;
+        Object.keys(D.keymap).forEach(function (oldK) {
+          var newK = D.keymap[oldK];
+          if (state.progress[oldK] !== undefined && state.progress[newK] === undefined) {
+            state.progress[newK] = state.progress[oldK];
+            delete state.progress[oldK];
+            mv++;
+          }
+        });
+        state.settings.keymapped = true;
+        save(K.settings, state.settings);
+        if (mv) { save(K.progress, { p: state.progress, b: bookmarks });
+                  setTimeout(function () { toast(mv + ' marks moved to their new positions.'); }, 1200); }
+      }
       state.settings = Object.assign(state.settings, r[1] || {});
-      state.filters = Object.assign(state.filters, r[2] || {});
+      var savedF = r[2] || {};
+      var sv = (typeof savedF.sv === 'number') ? savedF.sv
+             : (savedF.strands != null ? 15 : D.strands.length);
+      state.filters = Object.assign(state.filters, savedF);
+      if (sv < D.strands.length) {
+        // strand roster grew: new strands default ON, and saved era/collapse
+        // indices refer to the old era roster so they are no longer meaningful
+        for (var si = sv; si < D.strands.length; si++) state.filters.strands |= (1 << si);
+        state.filters.sv = D.strands.length;
+        state.filters.era = null;
+        state.settings.collapsed = [];
+        saveFilters(); save(K.settings, state.settings);
+      }
       reviews = r[3] || {};
       view = Object.assign(view, state.settings.view || {});
       applyView();
