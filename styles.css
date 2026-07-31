@@ -72,7 +72,7 @@ body{margin:0;background:var(--bg);color:var(--ink);
 .iconbtn:hover{background:rgba(255,255,255,.16)}
 main{max-width:960px;margin:0 auto;padding:0 0 40vh}
 /* ---------- era ---------- */
-.era-head{position:sticky;top:44px;z-index:10;display:flex;align-items:center;gap:10px;
+.era-head{position:sticky;top:calc(44px + env(safe-area-inset-top,0px));z-index:10;display:flex;align-items:center;gap:10px;
  padding:8px 14px;background:var(--tint);color:var(--deep);border-left:4px solid var(--acc);
  border-top:1px solid var(--rule);cursor:pointer;width:100%;text-align:left;font:inherit}
 .era-head h2{margin:0;font-size:12.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase}
@@ -129,7 +129,7 @@ main{max-width:960px;margin:0 auto;padding:0 0 40vh}
 .cont{font-family:var(--mark);font-size:10px;letter-spacing:.08em;text-transform:lowercase;
  opacity:.6;border:1px solid currentColor;border-radius:3px;padding:0 4px}
 /* ---------- filter bar ---------- */
-.filters{position:sticky;top:44px;z-index:15;background:var(--surface);border-bottom:1px solid var(--rule);
+.filters{position:sticky;top:calc(44px + env(safe-area-inset-top,0px));z-index:15;background:var(--surface);border-bottom:1px solid var(--rule);
  padding:8px 14px;display:grid;gap:8px}
 .filters[hidden]{display:none}
 .frow{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
@@ -150,7 +150,7 @@ main{max-width:960px;margin:0 auto;padding:0 0 40vh}
 .arc[hidden],.era[hidden],.row[hidden]{display:none}
 mark{background:var(--accent);color:#fff;border-radius:2px;padding:0 2px}
 /* ---------- settings ---------- */
-.panel{position:sticky;top:44px;z-index:16;background:var(--surface);border-bottom:1px solid var(--rule);
+.panel{position:sticky;top:calc(44px + env(safe-area-inset-top,0px));z-index:16;background:var(--surface);border-bottom:1px solid var(--rule);
  padding:10px 14px;display:grid;gap:9px;max-height:70vh;overflow:auto}
 .panel[hidden]{display:none}
 .seg{display:flex;gap:0;border:1px solid var(--rule);border-radius:var(--radius);overflow:hidden}
@@ -161,7 +161,7 @@ mark{background:var(--accent);color:#fff;border-radius:2px;padding:0 2px}
 .pace{font-family:var(--mark);font-size:12px;color:var(--ink-soft)}
 .pace b{color:var(--ink);font-weight:500}
 .presetRow{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-.mini{position:sticky;top:44px;z-index:14;height:3px;background:var(--rule)}
+.mini{position:sticky;top:calc(44px + env(safe-area-inset-top,0px));z-index:14;height:3px;background:var(--rule)}
 .mini>i{display:block;height:100%;background:var(--accent);transition:width .25s ease}
 @media (prefers-reduced-motion:reduce){.mini>i{transition:none}}
 /* row extras */
@@ -202,3 +202,65 @@ mark{background:var(--accent);color:#fff;border-radius:2px;padding:0 2px}
  border-top:1px dashed var(--rule);cursor:default;font-style:normal}
 .row.renum .mark{opacity:.5;cursor:default;color:var(--acc)}
 .row.renum .title{font-weight:400;font-family:var(--mark);font-size:12px}
+
+/* ---------- mobile: stop the topbar overflowing the viewport ----------
+   .topbar is a non-wrapping flex row of nowrap items; on narrow screens its
+   intrinsic width exceeded the viewport, which made the whole page pan
+   sideways. Vertical padding stays at 10px so the bar remains 44px tall and
+   the sticky offsets below it (top:calc(44px + env(safe-area-inset-top,0px))) still line up.
+   overflow-x:clip on body is a guard against any other stray overflow —
+   deliberately clip, not hidden, because hidden would create a scroll
+   container and break every position:sticky header in the app. */
+body{overflow-x:clip}
+@media (max-width:600px){
+  .topbar{gap:8px;padding:10px}
+  .topbar>*{min-width:0}
+  .wordmark{font-size:16px}
+  .pbar{min-width:34px}
+  .iconbtn{padding:6px 4px;font-size:15px}
+}
+@media (max-width:430px){
+  .topbar{gap:6px}
+  .wordmark{font-size:15px}
+  #count{display:none}          /* the % readout already carries progress */
+}
+
+
+/* ---------- standalone (added to home screen) ----------
+   apple-mobile-web-app-status-bar-style:black-translucent draws the page
+   under the status bar, so the topbar needs the safe-area inset added to
+   its padding, and every sticky offset below it has to follow. */
+.topbar{padding-top:calc(10px + env(safe-area-inset-top,0px))}
+body{padding-bottom:env(safe-area-inset-bottom,0px)}
+
+/* ---------- tabbed shell (opt-in: Settings > Layout > tabbed) ----------
+   Classic layout is unchanged and remains the default. In tabs mode the
+   settings panel stops being a sticky dropdown and becomes a tab pane, the
+   gear button is hidden, and every sticky offset gains the tab-bar height. */
+.tabs{position:sticky;top:calc(44px + env(safe-area-inset-top,0px));z-index:19;
+  display:flex;background:var(--surface);border-bottom:1px solid var(--rule)}
+.tabs[hidden]{display:none}
+.tab{flex:1;background:none;border:0;border-bottom:2px solid transparent;color:var(--ink-soft);
+  font:inherit;font-size:13px;padding:11px 4px;cursor:pointer;line-height:1;
+  white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+.tab[aria-selected="true"]{color:var(--action);border-bottom-color:var(--action);font-weight:600}
+:root[data-theme="newsprint"] .tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+
+:root[data-layout="tabs"] .era-head,
+:root[data-layout="tabs"] .filters,
+:root[data-layout="tabs"] .mini{top:calc(84px + env(safe-area-inset-top,0px))}
+:root[data-layout="tabs"] .panel{position:static;max-height:none;border-bottom:0}
+
+.pane{padding:12px 14px 40vh;max-width:960px;margin:0 auto}
+.pane[hidden]{display:none}
+.plist{margin:0 0 22px}
+.plist h2{margin:0 0 8px;font-size:12px;font-weight:600;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--ink-soft)}
+.pempty{margin:0;font-size:13px;color:var(--ink-soft);opacity:.8}
+.pitem{display:grid;gap:2px;width:100%;text-align:left;font:inherit;cursor:pointer;
+  background:var(--surface);border:0;border-top:1px solid var(--rule);padding:9px 2px}
+.pitem:hover{background:var(--tint)}
+.pt{font-size:14px;color:var(--ink)}
+.pa{font-size:12px;color:var(--ink-soft)}
+.pstars{font-size:12px;color:var(--accent);letter-spacing:.06em}
+.ptext{font-size:12.5px;color:var(--ink-soft);opacity:.9}

@@ -6,6 +6,10 @@
 <title>Spider-Man — Reading Order</title>
 <meta name="description" content="A complete Spider-Man reading-order tracker: 4,664 issues from Amazing Fantasy #15 onward.">
 <meta name="theme-color" content="#1959A7">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Spider-Man">
 <link rel="manifest" href="./manifest.json">
 <link rel="icon" href="./icons/icon-192.png">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
@@ -18,11 +22,24 @@
   <span class="count" id="count">—</span>
   <span class="pbar" role="progressbar" aria-label="Reading progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="pbar"><i id="pfill" style="width:0%"></i></span>
   <span class="count" id="pct">0%</span>
-  <button class="iconbtn" id="setBtn" title="Settings" aria-label="Settings" aria-expanded="false" aria-controls="panel">⚙</button>
   <button class="iconbtn" id="jumpBtn" title="Jump to next unread" aria-label="Jump to next unread">⤓</button>
   <button class="iconbtn" id="filterBtn" title="Filters" aria-label="Show filters" aria-expanded="false" aria-controls="filters">⚟</button>
   <button class="iconbtn" id="themeBtn" title="Switch theme" aria-label="Switch theme">◑</button>
 </header>
+
+<nav class="tabs" id="tabs" role="tablist" aria-label="Sections" hidden>
+  <button class="tab" id="tabChecklist" type="button" role="tab" aria-selected="true"  data-pane="app">Checklist</button>
+  <button class="tab" id="tabReading"   type="button" role="tab" aria-selected="false" data-pane="paneReading">Reading</button>
+  <button class="tab" id="tabReviews"   type="button" role="tab" aria-selected="false" data-pane="paneReviews">Reviews</button>
+  <button class="tab" id="tabSettings"  type="button" role="tab" aria-selected="false" data-pane="panel">Settings</button>
+</nav>
+
+<nav class="tabs" id="tabs" role="tablist" aria-label="Sections">
+  <button class="tab" data-pane="app"          role="tab" aria-selected="true"  type="button">Checklist</button>
+  <button class="tab" data-pane="paneReading"  role="tab" aria-selected="false" type="button">Reading</button>
+  <button class="tab" data-pane="paneReviews"  role="tab" aria-selected="false" type="button">Reviews</button>
+  <button class="tab" data-pane="panel"        role="tab" aria-selected="false" type="button">Settings</button>
+</nav>
 
 <section class="filters" id="filters" hidden aria-label="Filters">
   <div class="frow">
@@ -51,7 +68,8 @@
   </div>
 </section>
 
-<section class="panel" id="panel" hidden aria-label="Settings">
+<section class="panel pane" id="panel" hidden role="tabpanel" aria-label="Settings">
+  <div class="frow"><span class="flabel">Layout</span><span class="seg" id="segLayout"></span></div>
   <div class="frow"><span class="flabel">Density</span><span class="seg" id="segDensity"></span>
     <span class="flabel" style="width:auto">Text</span><span class="seg" id="segFont"></span></div>
   <div class="frow"><span class="flabel">Marks</span><span class="seg" id="segMark"></span>
@@ -83,6 +101,12 @@
   <p style="padding:24px 14px;color:var(--ink-soft)">Loading the checklist…</p>
 </main>
 
+<section class="pane" id="paneReading" hidden aria-label="Reading"></section>
+<section class="pane" id="paneReviews" hidden aria-label="Reviews"></section>
+
+<section class="pane" id="paneReading" hidden role="tabpanel" aria-label="Reading"></section>
+<section class="pane" id="paneReviews" hidden role="tabpanel" aria-label="Reviews"></section>
+
 <script src="./qrcode.js"></script>
 <script src="./data.js"></script>
 <script>
@@ -99,7 +123,7 @@
   var ALLSTRANDS = (1 << D.strands.length) - 1;
   var state = {
     progress: {},
-    settings: { theme: 'spidey', eraScheme: 'split', cloneOrder: 'epic', viewOrder: 'reading', collapsed: [] },
+    settings: { theme: 'spidey', eraScheme: 'split', cloneOrder: 'epic', viewOrder: 'reading', layout: 'classic', tab: 'app', collapsed: [] },
     filters: { depth: 'everything', types: D.types.slice(), strands: ALLSTRANDS, sv: D.strands.length,
                unreadOnly: false, alt: true, q: '' }
   };
@@ -640,7 +664,100 @@
     if (m && m.firstElementChild) m.firstElementChild.style.width = (c.total ? c.done / c.total * 100 : 0) + '%';
   }
 
+  /* ---------- layout shell: 'classic' (settings dropdown) or 'tabs' (X-Men style) ---------- */
+  var PANES = ['app', 'paneReading', 'paneReviews', 'panel'];
+
+  function applyLayout() {
+    var tabs = state.settings.layout === 'tabs';
+    document.documentElement.dataset.layout = tabs ? 'tabs' : 'classic';
+    document.getElementById('tabs').hidden = !tabs;
+    var sb = document.getElementById('setBtn');
+    if (sb) sb.hidden = tabs;
+    if (tabs) { switchTab(state.settings.tab || 'app'); }
+    else {
+      document.getElementById('app').hidden = false;
+      document.getElementById('paneReading').hidden = true;
+      document.getElementById('paneReviews').hidden = true;
+      document.getElementById('panel').hidden = true;
+      if (sb) sb.setAttribute('aria-expanded', 'false');
+    }
+  }
+
+  function switchTab(pane) {
+    if (PANES.indexOf(pane) === -1) pane = 'app';
+    state.settings.tab = pane;
+    PANES.forEach(function (p) {
+      var n = document.getElementById(p);
+      if (n) n.hidden = (p !== pane);
+    });
+    document.querySelectorAll('#tabs .tab').forEach(function (b) {
+      b.setAttribute('aria-selected', b.dataset.pane === pane ? 'true' : 'false');
+    });
+    var fb = document.getElementById('filterBtn');
+    if (fb) fb.hidden = (pane !== 'app');
+    if (pane === 'paneReading') renderReading();
+    if (pane === 'paneReviews') renderReviews();
+    if (pane === 'panel') paintPace();
+    save(K.settings, state.settings);
+  }
+
+  function jumpToIssue(k) {
+    if (state.settings.layout === 'tabs') switchTab('app');
+    setTimeout(function () {
+      var n = document.querySelector('.row[data-k="' + k + '"]');
+      if (n) { n.scrollIntoView({ block: 'center' }); flash(n); }
+      else toast('That issue is hidden by the current filters.');
+    }, 30);
+  }
+
+  function paneList(host, title, items, empty, decorate) {
+    var sec = el('section', 'plist');
+    var hd = el('h2', null, title + ' (' + items.length + ')');
+    sec.appendChild(hd);
+    if (!items.length) { sec.appendChild(el('p', 'pempty', empty)); host.appendChild(sec); return; }
+    items.forEach(function (it) {
+      var b = el('button', 'pitem');
+      b.type = 'button';
+      b.appendChild(el('span', 'pt', it[1]));
+      var arc = D.arcs[it[2]];
+      b.appendChild(el('span', 'pa', arc ? arc.n : ''));
+      if (decorate) decorate(b, it);
+      b.addEventListener('click', function () { jumpToIssue(it[0]); });
+      sec.appendChild(b);
+    });
+    host.appendChild(sec);
+  }
+
+  function renderReading() {
+    var host = document.getElementById('paneReading');
+    host.textContent = '';
+    var reading = D.issues.filter(function (it) { return state.progress[it[0]] === 'reading'; });
+    var marked = bookmarks.map(function (k) {
+      for (var i = 0; i < D.issues.length; i++) if (D.issues[i][0] === k) return D.issues[i];
+      return null;
+    }).filter(Boolean);
+    paneList(host, 'Currently reading', reading, 'Nothing in progress. Tap an issue\u2019s mark once to set it to reading.');
+    paneList(host, 'Bookmarked', marked, 'No bookmarks yet. Tap the \u2606 on any issue.');
+  }
+
+  function renderReviews() {
+    var host = document.getElementById('paneReviews');
+    host.textContent = '';
+    var keys = Object.keys(reviews).map(Number);
+    var items = D.issues.filter(function (it) { return keys.indexOf(it[0]) !== -1; });
+    paneList(host, 'Reviewed', items, 'No reviews yet. Tap the \u270E on any issue to write one.',
+      function (b, it) {
+        var rv = reviews[it[0]] || {};
+        if (rv.r) b.appendChild(el('span', 'pstars', '\u2605'.repeat(rv.r)));
+        if (rv.t) b.appendChild(el('span', 'ptext', rv.t));
+      });
+  }
+
   function buildSettingsUI() {
+    seg(document.getElementById('segLayout'),
+      [['classic', 'classic'], ['tabs', 'tabbed']],
+      function () { return state.settings.layout; },
+      function (v) { state.settings.layout = v; save(K.settings, state.settings); applyLayout(); });
     seg(document.getElementById('segDensity'),
       [['compact', 'compact'], ['normal', 'normal'], ['roomy', 'roomy']],
       function () { return view.density; }, function (v) { view.density = v; });
@@ -669,12 +786,10 @@
       });
     });
 
-    document.getElementById('setBtn').addEventListener('click', function () {
-      var p = document.getElementById('panel'), open = !p.hidden;
-      p.hidden = open;
-      this.setAttribute('aria-expanded', open ? 'false' : 'true');
-      if (!open) paintPace();
+    document.querySelectorAll('#tabs .tab').forEach(function (t) {
+      t.addEventListener('click', function () { switchTab(t.dataset.pane); });
     });
+    switchTab(state.settings.tab || 'app');
 
     document.getElementById('savePreset').addEventListener('click', function () {
       var name = prompt('Name this filter preset');
@@ -761,6 +876,97 @@
     var g = MARKS[view.mark];
     document.querySelectorAll('.row:not(.gap)').forEach(function (r) {
       r.querySelector('.mark').textContent = g[r.dataset.s || 'unread'];
+    });
+  }
+
+  /* ---------- tabs ---------- */
+  var PANES = ['app', 'paneReading', 'paneReviews', 'panel'];
+  function switchTab(name) {
+    if (PANES.indexOf(name) === -1) name = 'app';
+    PANES.forEach(function (p) {
+      var n = document.getElementById(p);
+      if (n) n.hidden = (p !== name);
+    });
+    document.querySelectorAll('#tabs .tab').forEach(function (t) {
+      t.setAttribute('aria-selected', t.dataset.pane === name ? 'true' : 'false');
+    });
+    // filters and jump only make sense against the checklist
+    var fb = document.getElementById('filterBtn'), jb = document.getElementById('jumpBtn');
+    var onList = (name === 'app');
+    fb.hidden = !onList; jb.hidden = !onList;
+    if (!onList) { document.getElementById('filters').hidden = true;
+                   fb.setAttribute('aria-expanded', 'false'); }
+    if (name === 'panel') paintPace();
+    if (name === 'paneReading') renderReading();
+    if (name === 'paneReviews') renderReviews();
+    state.settings.tab = name; save(K.settings, state.settings);
+    window.scrollTo(0, 0);
+  }
+
+  function issueByKey(k) {
+    for (var i = 0; i < D.issues.length; i++) if (D.issues[i][0] === k) return D.issues[i];
+    return null;
+  }
+  function jumpToIssue(k) {
+    switchTab('app');
+    setTimeout(function () {
+      var n = document.querySelector('[data-k="' + k + '"]');
+      if (n) { n.scrollIntoView({ block: 'center' }); n.classList.add('flash');
+               setTimeout(function () { n.classList.remove('flash'); }, 1400); }
+      else { toast('That issue is hidden by the current filters.'); }
+    }, 60);
+  }
+  function miniRow(it, extra) {
+    var b = el('button', 'mini-row');
+    b.type = 'button';
+    b.appendChild(el('span', 'mr-t', it[1]));
+    var arc = D.arcs[it[2]];
+    b.appendChild(el('span', 'mr-a', arc ? arc.n : ''));
+    if (extra) b.appendChild(extra);
+    b.addEventListener('click', function () { jumpToIssue(it[0]); });
+    return b;
+  }
+  function paneEmpty(pane, msg) {
+    pane.appendChild(el('p', 'pane-empty', msg));
+  }
+
+  function renderReading() {
+    var pane = document.getElementById('paneReading');
+    pane.textContent = '';
+    var inProg = [], marks = [];
+    Object.keys(state.progress).forEach(function (k) {
+      if (state.progress[k] === 'reading') { var it = issueByKey(Number(k)); if (it) inProg.push(it); }
+    });
+    bookmarks.forEach(function (k) { var it = issueByKey(k); if (it) marks.push(it); });
+    inProg.sort(function (a, b) { return a[0] - b[0]; });
+    marks.sort(function (a, b) { return a[0] - b[0]; });
+
+    pane.appendChild(el('h2', 'pane-h', 'Currently reading'));
+    if (inProg.length) inProg.forEach(function (it) { pane.appendChild(miniRow(it)); });
+    else paneEmpty(pane, 'Nothing in progress. Tap an issue\u2019s mark once to set it to reading.');
+
+    pane.appendChild(el('h2', 'pane-h', 'Bookmarked'));
+    if (marks.length) marks.forEach(function (it) { pane.appendChild(miniRow(it)); });
+    else paneEmpty(pane, 'No bookmarks yet. Tap the \u2606 on any issue.');
+  }
+
+  function renderReviews() {
+    var pane = document.getElementById('paneReviews');
+    pane.textContent = '';
+    var keys = Object.keys(reviews).map(Number).sort(function (a, b) { return a - b; });
+    pane.appendChild(el('h2', 'pane-h', 'Reviews' + (keys.length ? ' \u00b7 ' + keys.length : '')));
+    if (!keys.length) {
+      paneEmpty(pane, 'No reviews yet. Tap \u2605 on any issue to rate it.');
+      return;
+    }
+    keys.forEach(function (k) {
+      var it = issueByKey(k); if (!it) return;
+      var rv = reviews[k];
+      var wrap = el('div', 'rev-item');
+      var stars = el('span', 'mr-s', rv.r ? '\u2605'.repeat(rv.r) + '\u2606'.repeat(5 - rv.r) : '');
+      wrap.appendChild(miniRow(it, stars));
+      if (rv.t) wrap.appendChild(el('p', 'rev-t', rv.t));
+      pane.appendChild(wrap);
     });
   }
 
@@ -972,6 +1178,7 @@
       buildSettingsUI();
       render();
       applyFilters();
+      applyLayout();
     });
 
   /* ---------- toast ---------- */
