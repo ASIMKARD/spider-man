@@ -27,6 +27,14 @@
   <button class="iconbtn" id="themeBtn" title="Switch theme" aria-label="Switch theme">◑</button>
 </header>
 
+<header class="phead" id="phead" hidden>
+  <h1 class="ptitle">The Pull List</h1>
+  <p class="psub">Offline Edition &mdash; progress saves in this browser only, no account needed</p>
+  <p class="pmeta">Spider-Man reading tracker &middot; 1962&ndash;2026</p>
+  <div class="pbar2"><i id="pfill2" style="width:0%"></i></div>
+  <div class="pstats"><span id="pread">0 / 0 read</span><span id="premain">&mdash;</span></div>
+</header>
+
 <nav class="tabs" id="tabs" role="tablist" aria-label="Sections" hidden>
   <button class="tab" id="tabChecklist" type="button" role="tab" aria-selected="true"  data-pane="app">Checklist</button>
   <button class="tab" id="tabReading"   type="button" role="tab" aria-selected="false" data-pane="paneReading">Reading</button>
@@ -101,7 +109,7 @@
   <p style="padding:24px 14px;color:var(--ink-soft)">Loading the checklist…</p>
 </main>
 
-<section class="pane" id="paneReading" hidden aria-label="Reading"></section>
+<section class="pane" id="paneReading" hidden aria-label="Reading"><div class="rdr" id="rdr"></div></section>
 <section class="pane" id="paneReviews" hidden aria-label="Reviews"></section>
 
 <section class="pane" id="paneReading" hidden role="tabpanel" aria-label="Reading"></section>
@@ -123,7 +131,7 @@
   var ALLSTRANDS = (1 << D.strands.length) - 1;
   var state = {
     progress: {},
-    settings: { theme: 'spidey', eraScheme: 'split', cloneOrder: 'epic', viewOrder: 'reading', layout: 'classic', tab: 'app', collapsed: [] },
+    settings: { theme: 'spidey', eraScheme: 'split', cloneOrder: 'epic', viewOrder: 'reading', layout: 'tabs', tab: 'app', collapsed: [] },
     filters: { depth: 'everything', types: D.types.slice(), strands: ALLSTRANDS, sv: D.strands.length,
                unreadOnly: false, alt: true, q: '' }
   };
@@ -231,7 +239,19 @@
     document.getElementById('pct').textContent = pc + '%';
     document.getElementById('pfill').style.width = pc + '%';
     document.getElementById('pbar').setAttribute('aria-valuenow', pc);
-    paintMini(); paintPace();
+    paintMini(); paintPace(); paintPullHead();
+  }
+
+  function paintPullHead() {
+    var f = document.getElementById('pfill2');
+    if (!f) return;
+    var c = counts(), pc = c.total ? Math.round(c.done / c.total * 100) : 0;
+    f.style.width = pc + '%';
+    document.getElementById('pread').textContent =
+      c.done.toLocaleString() + ' / ' + c.total.toLocaleString() + ' read';
+    var left = c.total - c.done;
+    document.getElementById('premain').textContent =
+      left ? (left / view.pace * 7 / 24).toFixed(1).replace(/\.0$/, '') + 'd remaining' : 'all caught up';
   }
 
   /* ---------- helpers ---------- */
@@ -671,6 +691,10 @@
     var tabs = state.settings.layout === 'tabs';
     document.documentElement.dataset.layout = tabs ? 'tabs' : 'classic';
     document.getElementById('tabs').hidden = !tabs;
+    document.getElementById('phead').hidden = !tabs;
+    var tb = document.querySelector('.topbar');
+    if (tb) tb.hidden = tabs;
+    if (tabs) paintPullHead();
     var sb = document.getElementById('setBtn');
     if (sb) sb.hidden = tabs;
     if (tabs) { switchTab(state.settings.tab || 'app'); }
@@ -728,16 +752,83 @@
     host.appendChild(sec);
   }
 
+  /* ---------- Reading: focused one-issue stepper ---------- */
+  var rdrIdx = 0;
+
+  function rdrList() {
+    return ordered().filter(function (it) { return !(it[6] & INERT); });
+  }
+
   function renderReading() {
-    var host = document.getElementById('paneReading');
+    var host = document.getElementById('rdr');
     host.textContent = '';
-    var reading = D.issues.filter(function (it) { return state.progress[it[0]] === 'reading'; });
-    var marked = bookmarks.map(function (k) {
-      for (var i = 0; i < D.issues.length; i++) if (D.issues[i][0] === k) return D.issues[i];
-      return null;
-    }).filter(Boolean);
-    paneList(host, 'Currently reading', reading, 'Nothing in progress. Tap an issue\u2019s mark once to set it to reading.');
-    paneList(host, 'Bookmarked', marked, 'No bookmarks yet. Tap the \u2606 on any issue.');
+    var list = rdrList();
+    if (!list.length) { host.appendChild(el('p', 'pempty', 'Nothing matches the current filters.')); return; }
+
+    // resume at the first unread unless the user has already stepped somewhere
+    if (rdrIdx == null || rdrIdx < 0 || rdrIdx >= list.length) rdrIdx = 0;
+    if (!rdrTouched) {
+      for (var i = 0; i < list.length; i++) {
+        if (!state.progress[list[i][0]]) { rdrIdx = i; break; }
+      }
+    }
+    var it = list[rdrIdx], arc = D.arcs[it[2]] || {};
+
+    host.appendChild(el('p', 'rcount', (rdrIdx + 1).toLocaleString() + ' of ' + list.length.toLocaleString()));
+
+    var era = D.eras[arc.e] || { n: '' };
+    var pill = el('span', 'rpill', era.n.replace(/\s*\(.*\)\s*$/, ''));
+    pill.style.background = 'var(--e' + arc.e + '-a)';
+    var pw = el('div', 'rpillwrap'); pw.appendChild(pill); host.appendChild(pw);
+
+    host.appendChild(el('h2', 'rtitle', it[1]));
+    host.appendChild(el('p', 'rmeta', (arc.n || '') + ' \u00B7 ' + (D.types[it[3]] || '')));
+    if (it[7]) host.appendChild(el('p', 'rnote', it[7]));
+    if (arc.b) { host.appendChild(el('hr', 'rrule')); host.appendChild(el('p', 'rblurb', arc.b)); }
+
+    var st = state.progress[it[0]] || 'unread';
+    var acts = el('div', 'racts');
+    var skip = el('button', 'rbtn ghost', st === 'skip' ? 'Skipped' : 'Skip');
+    skip.type = 'button';
+    skip.addEventListener('click', function () { setRdr(it, st === 'skip' ? 'unread' : 'skip'); });
+    var read = el('button', 'rbtn solid', st === 'read' ? 'Read \u2713' : 'Mark Read');
+    read.type = 'button';
+    read.addEventListener('click', function () { setRdr(it, st === 'read' ? 'unread' : 'read'); });
+    acts.appendChild(skip); acts.appendChild(read); host.appendChild(acts);
+
+    var nav = el('div', 'rnav');
+    var prev = el('button', 'rlink', '\u2190 Previous'); prev.type = 'button';
+    prev.disabled = rdrIdx === 0;
+    prev.addEventListener('click', function () { rdrTouched = true; rdrIdx--; renderReading(); });
+    var pinned = bookmarks.indexOf(it[0]) !== -1;
+    var pin = el('button', 'rlink', (pinned ? '\u2605 Pinned' : '\u2606 Pin for later'));
+    pin.type = 'button';
+    pin.addEventListener('click', function () {
+      var i = bookmarks.indexOf(it[0]);
+      if (i === -1) bookmarks.push(it[0]); else bookmarks.splice(i, 1);
+      saveProgress(); renderReading();
+    });
+    var next = el('button', 'rlink', 'Next \u2192'); next.type = 'button';
+    next.disabled = rdrIdx >= list.length - 1;
+    next.addEventListener('click', function () { rdrTouched = true; rdrIdx++; renderReading(); });
+    nav.appendChild(prev); nav.appendChild(pin); nav.appendChild(next);
+    host.appendChild(nav);
+  }
+
+  var rdrTouched = false;
+  function setRdr(it, next) {
+    if (next === 'unread') delete state.progress[it[0]]; else state.progress[it[0]] = next;
+    saveProgress();
+    var row = document.querySelector('.row[data-k="' + it[0] + '"]');
+    if (row) {
+      row.dataset.s = next;
+      var m = row.querySelector('.mark');
+      if (m) { m.textContent = MARKS[view.mark][next]; m.title = LABEL[next]; }
+    }
+    paintProgress(); paintPullHead();
+    var list = rdrList();
+    if (rdrIdx < list.length - 1) { rdrTouched = true; rdrIdx++; }
+    renderReading();
   }
 
   function renderReviews() {

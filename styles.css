@@ -264,3 +264,48 @@ body{padding-bottom:env(safe-area-inset-bottom,0px)}
 .pa{font-size:12px;color:var(--ink-soft)}
 .pstars{font-size:12px;color:var(--accent);letter-spacing:.06em}
 .ptext{font-size:12.5px;color:var(--ink-soft);opacity:.9}
+
+/* ---------- Pull List header (tabs layout only) ----------
+   Replaces the sticky topbar in tabs mode. Everything here is block-level and
+   wraps, so unlike .topbar it cannot exceed the viewport at any width. */
+.phead{padding:calc(14px + env(safe-area-inset-top,0px)) 14px 10px;background:var(--tint);
+  border-bottom:1px solid var(--rule)}
+.phead[hidden]{display:none}
+.ptitle{margin:0;font-family:var(--display),system-ui,sans-serif;font-size:30px;line-height:1;
+  letter-spacing:.01em;text-transform:uppercase;color:var(--ink);overflow-wrap:anywhere}
+.psub{margin:5px 0 0;font-size:13px;color:var(--ink-soft);overflow-wrap:anywhere}
+.pmeta{margin:9px 0 0;font-family:var(--mark);font-size:13px;color:var(--ink-soft)}
+.pbar2{margin-top:10px;height:9px;border-radius:999px;background:var(--rule);overflow:hidden}
+.pbar2 i{display:block;height:100%;background:var(--action);transition:width .25s ease}
+.pstats{display:flex;justify-content:space-between;gap:10px;margin-top:6px;
+  font-family:var(--mark);font-size:12.5px;color:var(--ink-soft);flex-wrap:wrap}
+:root[data-layout="tabs"] .tabs{top:0}
+:root[data-layout="tabs"] .era-head,
+:root[data-layout="tabs"] .filters,
+:root[data-layout="tabs"] .mini{top:40px}
+
+/* ---------- Reading: focused stepper ---------- */
+.rdr{max-width:640px;margin:0 auto;padding:22px 16px;text-align:center}
+.rcount{margin:0 0 26px;font-family:var(--mark);font-size:13px;color:var(--ink-soft)}
+.rpillwrap{margin-bottom:14px}
+.rpill{display:inline-block;padding:5px 14px;border-radius:999px;color:#fff;
+  font-size:13px;font-weight:600}
+.rtitle{margin:0 0 6px;font-family:var(--display),system-ui,sans-serif;font-size:26px;
+  line-height:1.15;color:var(--ink);overflow-wrap:anywhere}
+.rmeta{margin:0;font-size:14px;color:var(--ink-soft);overflow-wrap:anywhere}
+.rnote{margin:14px 0 0;font-size:14.5px;font-style:italic;color:var(--ink-soft)}
+.rrule{border:0;border-top:1px dashed var(--rule);margin:22px 0}
+.rblurb{margin:0;font-size:15px;line-height:1.55;color:var(--ink)}
+.racts{display:flex;gap:12px;margin:32px 0 18px}
+.rbtn{flex:1;min-width:0;font:inherit;font-size:15px;font-weight:600;padding:15px 8px;
+  border-radius:var(--radius);cursor:pointer;overflow-wrap:anywhere}
+.rbtn.ghost{background:var(--surface);color:var(--ink);border:1.5px solid var(--ink)}
+.rbtn.solid{background:var(--ink);color:var(--surface);border:1.5px solid var(--ink)}
+.rnav{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.rlink{background:none;border:0;font:inherit;font-size:13.5px;color:var(--ink);
+  cursor:pointer;padding:6px 2px}
+.rlink:disabled{opacity:.35;cursor:default}
+
+/* ---------- hard guarantee: nothing may exceed the viewport ---------- */
+html{max-width:100%}
+img,svg,pre,table{max-width:100%}
