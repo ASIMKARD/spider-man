@@ -89,7 +89,7 @@ main{max-width:960px;margin:0 auto;padding:0 0 40vh}
 .blurb{background:var(--tint);border-left:4px solid var(--acc);padding:0 14px 8px;
  font-size:13px;color:var(--ink);opacity:.85;max-width:74ch}
 /* ---------- rows ---------- */
-.row{display:flex;align-items:center;gap:10px;padding:var(--dens) 14px;background:var(--tint);
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:var(--dens) 14px;background:var(--tint);
  border-left:4px solid var(--acc);border-top:1px solid rgba(0,0,0,.055);position:relative}
 .mark{font-family:var(--mark);font-size:16px;width:26px;min-height:26px;flex:none;display:grid;
  place-items:center;background:none;border:0;cursor:pointer;color:var(--ink-soft);
@@ -100,7 +100,7 @@ main{max-width:960px;margin:0 auto;padding:0 0 40vh}
 .row[data-s="skip"] .mark{color:var(--ink-soft);opacity:.55}
 .row[data-s="read"] .title,.row[data-s="skip"] .title{opacity:.55}
 .row[data-s="skip"] .title{text-decoration:line-through}
-.title{font-weight:500;flex:none}
+.title{font-weight:500;flex:0 1 auto;min-width:0;overflow-wrap:anywhere}
 .arclab{font-size:12.5px;color:var(--ink-soft);flex:1;min-width:0;overflow:hidden;
  text-overflow:ellipsis;white-space:nowrap}
 .badges{display:flex;gap:5px;align-items:center;flex:none}
@@ -309,3 +309,14 @@ body{padding-bottom:env(safe-area-inset-bottom,0px)}
 /* ---------- hard guarantee: nothing may exceed the viewport ---------- */
 html{max-width:100%}
 img,svg,pre,table{max-width:100%}
+
+
+/* ---------- overflow guarantee ----------
+   The root cause of the iPhone side-scroll was .title{flex:none}: a flex item
+   that can neither shrink nor wrap forces its row as wide as its longest
+   string. Spider-Man issue titles are far longer than X-Men's, which is why
+   the same stylesheet overflowed here and not there. These rules make every
+   flex child shrinkable and let long strings break. */
+.row>*,.era-head>*,.arc-head>*,.frow>*,.pstats>*,.racts>*,.rnav>*{min-width:0}
+.title,.arclab,.rtitle,.rmeta,.ptitle,.psub{overflow-wrap:anywhere}
+.seg{flex-wrap:wrap}
