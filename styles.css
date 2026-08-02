@@ -331,3 +331,18 @@ img,svg,pre,table{max-width:100%}
 .era-head .n,.count{overflow:hidden;text-overflow:ellipsis}
 
 :root[data-layout="classic"] #panel{padding:0;max-width:none;margin:0}
+
+
+/* ---------- long-list performance ----------
+   4,683 rows plus ~5,000 sticky era/arc headers (the interleaved reading
+   order re-enters eras constantly, so a header is emitted at every
+   transition) meant the whole list was laid out and painted on every
+   frame. content-visibility:auto lets the engine skip everything
+   off-screen; contain-intrinsic-size(auto N) reserves an estimated height
+   and then remembers the real one, keeping the scrollbar stable. Browsers
+   without support simply ignore these lines. */
+.row,.arc-head,.era-head,.blurb{content-visibility:auto}
+.row{contain-intrinsic-size:auto 46px}
+.arc-head{contain-intrinsic-size:auto 42px}
+.era-head{contain-intrinsic-size:auto 46px}
+.blurb{contain-intrinsic-size:auto 96px}
