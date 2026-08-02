@@ -367,3 +367,9 @@ img,svg,pre,table{max-width:100%}
 .period .era-head{padding-left:20px;font-size:12px}
 .period .era-head h2{font-size:11.5px;opacity:.9}
 :root[data-layout="tabs"] .period .era-head{top:88px}
+
+/* filters sit open on the Checklist in tabs mode (X-Men behaviour), so they
+   scroll with the list rather than pinning under the tab bar */
+:root[data-layout="tabs"] .filters{position:static;border-bottom:2px solid var(--rule)}
+:root[data-layout="tabs"] .filters .frow{align-items:flex-start}
+.filters .chip[data-kind="strand"]{font-size:11.5px}

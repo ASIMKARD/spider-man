@@ -31,7 +31,7 @@
 <header class="phead" id="phead" hidden>
   <h1 class="ptitle">The Pull List</h1>
   <p class="psub">Offline Edition &mdash; progress saves in this browser only, no account needed</p>
-  <p class="pmeta">Spider-Man reading tracker &middot; 1962&ndash;2026 &middot; <b id="buildtag">build v13</b></p>
+  <p class="pmeta">Spider-Man reading tracker &middot; 1962&ndash;2026 &middot; <b id="buildtag">build v14</b></p>
   <div class="pbar2"><i id="pfill2" style="width:0%"></i></div>
   <div class="pstats"><span id="pread">0 / 0 read</span><span id="premain">&mdash;</span></div>
 </header>
@@ -55,7 +55,13 @@
     <span role="group" aria-labelledby="l-type" id="typeChips"></span>
   </div>
   <div class="frow">
-    <span class="flabel" id="l-strand">Strands</span>
+    <span class="flabel" id="l-mo">Priority</span>
+    <span role="group" aria-labelledby="l-mo" id="moChips"></span>
+    <span class="flabel" id="l-fmt" style="width:auto">Format</span>
+    <span role="group" aria-labelledby="l-fmt" id="fmtChips"></span>
+  </div>
+  <div class="frow">
+    <span class="flabel" id="l-strand">Characters</span>
     <span role="group" aria-labelledby="l-strand" id="strandChips"></span>
     <button class="linkbtn" id="strandAll" type="button">all</button>
     <button class="linkbtn" id="strandNone" type="button">none</button>
@@ -130,7 +136,7 @@
   var state = {
     progress: {},
     settings: { theme: 'spidey', eraScheme: 'split', cloneOrder: 'epic', viewOrder: 'reading', layout: 'tabs', tab: 'app', collapsed: [], pcollapsed: [] },
-    filters: { depth: 'everything', types: D.types.slice(), strands: ALLSTRANDS, sv: D.strands.length,
+    filters: { depth: 'everything', types: D.types.slice(), strands: ALLSTRANDS, sv: D.strands.length, mo: ['M','O'], annuals: true,
                unreadOnly: false, alt: true, q: '' }
   };
   var K2 = 'spidey:v1:filters';
@@ -527,6 +533,19 @@
       }));
     });
 
+    var mWrap = document.getElementById('moChips');
+    [['M', 'Mandatory'], ['O', 'Optional']].forEach(function (p) {
+      mWrap.appendChild(chip(p[1], (f.mo || ['M','O']).indexOf(p[0]) !== -1, function (on) {
+        f.mo = f.mo || ['M', 'O'];
+        var i = f.mo.indexOf(p[0]);
+        if (on && i === -1) f.mo.push(p[0]);
+        if (!on && i !== -1) f.mo.splice(i, 1);
+      }));
+    });
+
+    var fWrap = document.getElementById('fmtChips');
+    fWrap.appendChild(chip('Annuals', f.annuals !== false, function (on) { f.annuals = on; }));
+
     var sWrap = document.getElementById('strandChips');
     D.strands.forEach(function (name, i) {
       sWrap.appendChild(chip(name, !!(f.strands >> i & 1), function (on) {
@@ -607,7 +626,7 @@
     });
 
     document.getElementById('resetBtn').addEventListener('click', function () {
-      state.filters = { depth: 'everything', types: D.types.slice(), strands: ALLSTRANDS, sv: D.strands.length,
+      state.filters = { depth: 'everything', types: D.types.slice(), strands: ALLSTRANDS, sv: D.strands.length, mo: ['M','O'], annuals: true,
                         unreadOnly: false, alt: true, q: '', era: null };
       saveFilters();
       document.getElementById('search').value = '';
@@ -656,6 +675,9 @@
     if (f.depth === 'core' && !it[5]) return false;
     if (f.depth === 'essential' && !(it[4] || it[5])) return false;
     if (f.types.indexOf(D.types[it[3]]) === -1) return false;
+    var mo = f.mo || ['M', 'O'];
+    if (mo.indexOf(it[4] ? 'M' : 'O') === -1) return false;
+    if (f.annuals === false && /\bannual\b/i.test(it[1])) return false;
     if (f.unreadOnly && state.progress[it[0]]) return false;
     return true;
   }
@@ -742,6 +764,10 @@
     document.getElementById('phead').hidden = !tabs;
     var tb = document.querySelector('.topbar');
     if (tb) tb.hidden = tabs;
+    // tabs mode has no topbar, so the filter toggle is unreachable —
+    // show the filter panel inline on the Checklist the way X-Men does
+    var fsec = document.getElementById('filters');
+    if (fsec) fsec.hidden = tabs ? (state.settings.tab !== 'app') : true;
     if (tabs) paintPullHead();
     var sb = document.getElementById('setBtn');
     if (sb) sb.hidden = tabs;
@@ -1031,8 +1057,9 @@
     var fb = document.getElementById('filterBtn'), jb = document.getElementById('jumpBtn');
     var onList = (name === 'app');
     fb.hidden = !onList; jb.hidden = !onList;
-    if (!onList) { document.getElementById('filters').hidden = true;
-                   fb.setAttribute('aria-expanded', 'false'); }
+    var fsec2 = document.getElementById('filters');
+    if (state.settings.layout === 'tabs') fsec2.hidden = !onList;
+    else if (!onList) { fsec2.hidden = true; fb.setAttribute('aria-expanded', 'false'); }
     if (name === 'panel') paintPace();
     if (name === 'paneReading') renderReading();
     if (name === 'paneReviews') renderReviews();
