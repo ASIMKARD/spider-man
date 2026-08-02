@@ -31,7 +31,7 @@
 <header class="phead" id="phead" hidden>
   <h1 class="ptitle">The Pull List</h1>
   <p class="psub">Offline Edition &mdash; progress saves in this browser only, no account needed</p>
-  <p class="pmeta">Spider-Man reading tracker &middot; 1962&ndash;2026 &middot; <b id="buildtag">build v11</b></p>
+  <p class="pmeta">Spider-Man reading tracker &middot; 1962&ndash;2026 &middot; <b id="buildtag">build v13</b></p>
   <div class="pbar2"><i id="pfill2" style="width:0%"></i></div>
   <div class="pstats"><span id="pread">0 / 0 read</span><span id="premain">&mdash;</span></div>
 </header>
@@ -72,6 +72,9 @@
 </section>
 
 <section class="panel pane" id="panel" hidden role="tabpanel" aria-label="Settings">
+  <div class="frow"><span class="flabel">Sections</span>
+    <button class="linkbtn" id="collapseAll" type="button">Collapse all</button>
+    <button class="linkbtn" id="expandAll" type="button">Expand all</button></div>
   <div class="frow"><span class="flabel">Layout</span><span class="seg" id="segLayout"></span></div>
   <div class="frow"><span class="flabel">Density</span><span class="seg" id="segDensity"></span>
     <span class="flabel" style="width:auto">Text</span><span class="seg" id="segFont"></span></div>
@@ -126,7 +129,7 @@
   var ALLSTRANDS = (1 << D.strands.length) - 1;
   var state = {
     progress: {},
-    settings: { theme: 'spidey', eraScheme: 'split', cloneOrder: 'epic', viewOrder: 'reading', layout: 'tabs', tab: 'app', collapsed: [] },
+    settings: { theme: 'spidey', eraScheme: 'split', cloneOrder: 'epic', viewOrder: 'reading', layout: 'tabs', tab: 'app', collapsed: [], pcollapsed: [] },
     filters: { depth: 'everything', types: D.types.slice(), strands: ALLSTRANDS, sv: D.strands.length,
                unreadOnly: false, alt: true, q: '' }
   };
@@ -268,9 +271,53 @@
     var frag = document.createDocumentFragment();
     var curEra = -1, curArc = -1, eraBody = null, arcBox = null;
     var eraSeen = {}, arcSeen = {};
+    var curPer = -1, perBody = null;
+    var PIDX = {};
+    D.issues.forEach(function (r, i) { PIDX[r[0]] = D.issuePeriod[i]; });
 
     rows.forEach(function (it) {
       var arc = D.arcs[it[2]];
+
+      var per = PIDX[it[0]];
+      if (D.periods && per !== curPer) {
+        curPer = per; curEra = -1; curArc = -1;
+        var pd = D.periods[per];
+        var psec = el('section', 'period');
+        psec.dataset.p = per;
+        var popen = (state.settings.pcollapsed || []).indexOf(per) === -1;
+        psec.setAttribute('aria-expanded', popen ? 'true' : 'false');
+
+        var phd = el('button', 'period-head');
+        phd.type = 'button';
+        phd.appendChild(el('span', 'chev', '\u25BE'));
+        var pw = el('span', 'ptext');
+        pw.appendChild(el('span', 'pname', pd.n));
+        pw.appendChild(el('span', 'pyears', pd.y));
+        phd.appendChild(pw);
+        var pn = el('span', 'n');
+        phd.appendChild(pn);
+        psec.appendChild(phd);
+
+        perBody = el('div', 'period-body');
+        perBody.hidden = !popen;
+        if (pd.b) perBody.appendChild(el('p', 'period-intro', pd.b));
+        psec.appendChild(perBody);
+
+        phd.addEventListener('click', function () {
+          var open = psec.getAttribute('aria-expanded') === 'true';
+          psec.setAttribute('aria-expanded', open ? 'false' : 'true');
+          psec.querySelector('.period-body').hidden = open;
+          state.settings.pcollapsed = state.settings.pcollapsed || [];
+          var i = state.settings.pcollapsed.indexOf(per);
+          if (open && i === -1) state.settings.pcollapsed.push(per);
+          if (!open && i !== -1) state.settings.pcollapsed.splice(i, 1);
+          save(K.settings, state.settings);
+        });
+
+        psec._count = pn;
+        frag.appendChild(psec);
+      }
+
       if (arc.e !== curEra) {
         curEra = arc.e; curArc = -1;
         var era = D.eras[curEra];
@@ -308,7 +355,7 @@
           save(K.settings, state.settings);
         });
         sec._count = n;
-        frag.appendChild(sec);
+        (perBody || frag).appendChild(sec);
       }
 
       if (it[2] !== curArc) {
@@ -423,6 +470,12 @@
   }
 
   function tallyEras() {
+    document.querySelectorAll('.period').forEach(function (sec) {
+      var rows = sec.querySelectorAll('.row:not(.gap)');
+      var done = 0;
+      rows.forEach(function (r) { if (r.dataset.s === 'read' || r.dataset.s === 'skip') done++; });
+      if (sec._count) sec._count.textContent = done + ' / ' + rows.length;
+    });
     document.querySelectorAll('.era').forEach(function (sec) {
       var rows = sec.querySelectorAll('.row:not(.gap)');
       var done = 0;
@@ -847,6 +900,24 @@
     document.querySelectorAll('#tabs .tab').forEach(function (t) {
       t.addEventListener('click', function () { switchTab(t.dataset.pane); });
     });
+
+    function setAllSections(collapsed) {
+      state.settings.pcollapsed = collapsed ? (D.periods || []).map(function (p, i) { return i; }) : [];
+      state.settings.collapsed  = collapsed ? D.eras.map(function (e, i) { return i; }) : [];
+      save(K.settings, state.settings);
+      document.querySelectorAll('.period').forEach(function (s) {
+        s.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        s.querySelector('.period-body').hidden = collapsed;
+      });
+      document.querySelectorAll('.era').forEach(function (s) {
+        s.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        s.querySelector('.era-body').hidden = collapsed;
+      });
+      toast(collapsed ? 'All sections collapsed.' : 'All sections expanded.');
+    }
+    var ca = document.getElementById('collapseAll'), ea = document.getElementById('expandAll');
+    if (ca) ca.addEventListener('click', function () { setAllSections(true); });
+    if (ea) ea.addEventListener('click', function () { setAllSections(false); });
 
     var sbtn = document.getElementById('setBtn');
     if (sbtn) sbtn.addEventListener('click', function () {
