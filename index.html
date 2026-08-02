@@ -24,13 +24,14 @@
   <span class="count" id="pct">0%</span>
   <button class="iconbtn" id="jumpBtn" title="Jump to next unread" aria-label="Jump to next unread">⤓</button>
   <button class="iconbtn" id="filterBtn" title="Filters" aria-label="Show filters" aria-expanded="false" aria-controls="filters">⚟</button>
+  <button class="iconbtn" id="setBtn" title="Settings" aria-label="Show settings" aria-expanded="false" aria-controls="panel">⚙</button>
   <button class="iconbtn" id="themeBtn" title="Switch theme" aria-label="Switch theme">◑</button>
 </header>
 
 <header class="phead" id="phead" hidden>
   <h1 class="ptitle">The Pull List</h1>
   <p class="psub">Offline Edition &mdash; progress saves in this browser only, no account needed</p>
-  <p class="pmeta">Spider-Man reading tracker &middot; 1962&ndash;2026 &middot; <b id="buildtag">build v9</b></p>
+  <p class="pmeta">Spider-Man reading tracker &middot; 1962&ndash;2026 &middot; <b id="buildtag">build v10</b></p>
   <div class="pbar2"><i id="pfill2" style="width:0%"></i></div>
   <div class="pstats"><span id="pread">0 / 0 read</span><span id="premain">&mdash;</span></div>
 </header>
@@ -845,6 +846,14 @@
 
     document.querySelectorAll('#tabs .tab').forEach(function (t) {
       t.addEventListener('click', function () { switchTab(t.dataset.pane); });
+    });
+
+    var sbtn = document.getElementById('setBtn');
+    if (sbtn) sbtn.addEventListener('click', function () {
+      var p = document.getElementById('panel');
+      p.hidden = !p.hidden;
+      sbtn.setAttribute('aria-expanded', p.hidden ? 'false' : 'true');
+      if (!p.hidden) paintPace();
     });
     switchTab(state.settings.tab || 'app');
 

@@ -329,3 +329,5 @@ img,svg,pre,table{max-width:100%}
 .topbar[hidden],.phead[hidden],.tabs[hidden],.pane[hidden],.panel[hidden]{display:none !important}
 
 .era-head .n,.count{overflow:hidden;text-overflow:ellipsis}
+
+:root[data-layout="classic"] #panel{padding:0;max-width:none;margin:0}
