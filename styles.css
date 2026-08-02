@@ -212,7 +212,7 @@ mark{background:var(--accent);color:#fff;border-radius:2px;padding:0 2px}
    overflow-x:clip on body is a guard against any other stray overflow —
    deliberately clip, not hidden, because hidden would create a scroll
    container and break every position:sticky header in the app. */
-body{overflow-x:clip}
+html,body{overflow-x:hidden;overflow-x:clip;max-width:100%}
 @media (max-width:600px){
   .topbar{gap:8px;padding:10px}
   .topbar>*{min-width:0}
@@ -327,3 +327,5 @@ img,svg,pre,table{max-width:100%}
    so elements given display:flex must opt in explicitly or JS .hidden = true
    silently does nothing. This is why the topbar stayed visible in tabs mode. */
 .topbar[hidden],.phead[hidden],.tabs[hidden],.pane[hidden],.panel[hidden]{display:none !important}
+
+.era-head .n,.count{overflow:hidden;text-overflow:ellipsis}

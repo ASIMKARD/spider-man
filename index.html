@@ -30,7 +30,7 @@
 <header class="phead" id="phead" hidden>
   <h1 class="ptitle">The Pull List</h1>
   <p class="psub">Offline Edition &mdash; progress saves in this browser only, no account needed</p>
-  <p class="pmeta">Spider-Man reading tracker &middot; 1962&ndash;2026</p>
+  <p class="pmeta">Spider-Man reading tracker &middot; 1962&ndash;2026 &middot; <b id="buildtag">build v9</b></p>
   <div class="pbar2"><i id="pfill2" style="width:0%"></i></div>
   <div class="pstats"><span id="pread">0 / 0 read</span><span id="premain">&mdash;</span></div>
 </header>
@@ -728,23 +728,6 @@
     }, 30);
   }
 
-  function paneList(host, title, items, empty, decorate) {
-    var sec = el('section', 'plist');
-    var hd = el('h2', null, title + ' (' + items.length + ')');
-    sec.appendChild(hd);
-    if (!items.length) { sec.appendChild(el('p', 'pempty', empty)); host.appendChild(sec); return; }
-    items.forEach(function (it) {
-      var b = el('button', 'pitem');
-      b.type = 'button';
-      b.appendChild(el('span', 'pt', it[1]));
-      var arc = D.arcs[it[2]];
-      b.appendChild(el('span', 'pa', arc ? arc.n : ''));
-      if (decorate) decorate(b, it);
-      b.addEventListener('click', function () { jumpToIssue(it[0]); });
-      sec.appendChild(b);
-    });
-    host.appendChild(sec);
-  }
 
   /* ---------- Reading: focused one-issue stepper ---------- */
   var rdrIdx = 0;
@@ -754,8 +737,10 @@
   }
 
   function renderReading() {
-    var host = document.getElementById('rdr');
-    host.textContent = '';
+    var pane = document.getElementById('paneReading');
+    pane.textContent = '';
+    var host = el('div', 'rdr');
+    pane.appendChild(host);
     var list = rdrList();
     if (!list.length) { host.appendChild(el('p', 'pempty', 'Nothing matches the current filters.')); return; }
 
@@ -823,19 +808,6 @@
     var list = rdrList();
     if (rdrIdx < list.length - 1) { rdrTouched = true; rdrIdx++; }
     renderReading();
-  }
-
-  function renderReviews() {
-    var host = document.getElementById('paneReviews');
-    host.textContent = '';
-    var keys = Object.keys(reviews).map(Number);
-    var items = D.issues.filter(function (it) { return keys.indexOf(it[0]) !== -1; });
-    paneList(host, 'Reviewed', items, 'No reviews yet. Tap the \u270E on any issue to write one.',
-      function (b, it) {
-        var rv = reviews[it[0]] || {};
-        if (rv.r) b.appendChild(el('span', 'pstars', '\u2605'.repeat(rv.r)));
-        if (rv.t) b.appendChild(el('span', 'ptext', rv.t));
-      });
   }
 
   function buildSettingsUI() {
@@ -1013,26 +985,6 @@
   }
   function paneEmpty(pane, msg) {
     pane.appendChild(el('p', 'pane-empty', msg));
-  }
-
-  function renderReading() {
-    var pane = document.getElementById('paneReading');
-    pane.textContent = '';
-    var inProg = [], marks = [];
-    Object.keys(state.progress).forEach(function (k) {
-      if (state.progress[k] === 'reading') { var it = issueByKey(Number(k)); if (it) inProg.push(it); }
-    });
-    bookmarks.forEach(function (k) { var it = issueByKey(k); if (it) marks.push(it); });
-    inProg.sort(function (a, b) { return a[0] - b[0]; });
-    marks.sort(function (a, b) { return a[0] - b[0]; });
-
-    pane.appendChild(el('h2', 'pane-h', 'Currently reading'));
-    if (inProg.length) inProg.forEach(function (it) { pane.appendChild(miniRow(it)); });
-    else paneEmpty(pane, 'Nothing in progress. Tap an issue\u2019s mark once to set it to reading.');
-
-    pane.appendChild(el('h2', 'pane-h', 'Bookmarked'));
-    if (marks.length) marks.forEach(function (it) { pane.appendChild(miniRow(it)); });
-    else paneEmpty(pane, 'No bookmarks yet. Tap the \u2606 on any issue.');
   }
 
   function renderReviews() {
