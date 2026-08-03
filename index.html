@@ -31,7 +31,7 @@
 <header class="phead" id="phead" hidden>
   <h1 class="ptitle">The Pull List</h1>
   <p class="psub">Offline Edition &mdash; progress saves in this browser only, no account needed</p>
-  <p class="pmeta">Spider-Man reading tracker &middot; 1962&ndash;2026 &middot; <b id="buildtag">build v16</b></p>
+  <p class="pmeta">Spider-Man reading tracker &middot; 1962&ndash;2026 &middot; <b id="buildtag">build v18</b></p>
   <div class="pbar2"><i id="pfill2" style="width:0%"></i></div>
   <div class="pstats"><span id="pread">0 / 0 read</span><span id="premain">&mdash;</span></div>
 </header>
@@ -546,6 +546,10 @@
 
     var fWrap = document.getElementById('fmtChips');
     fWrap.appendChild(chip('Annuals', f.annuals !== false, function (on) { f.annuals = on; }));
+    // Ultimate is technically a spin-off type, but it is a large enough body of
+    // work (both the 2000 Bendis line and the 2024 Earth-6160 relaunch) to earn
+    // its own switch rather than being buried in the character chips
+    fWrap.appendChild(chip('Ultimate', f.ultimate !== false, function (on) { f.ultimate = on; }));
 
     var sWrap = document.getElementById('strandChips');
     D.strands.forEach(function (name, i) {
@@ -679,6 +683,11 @@
     var mo = f.mo || ['M', 'O'];
     if (mo.indexOf(it[4] ? 'M' : 'O') === -1) return false;
     if (f.annuals === false && /\bannual\b/i.test(it[1])) return false;
+    if (f.ultimate === false) {
+      var uMask = 0;
+      D.strands.forEach(function (n, i) { if (/^Ultimate/.test(n)) uMask |= (1 << i); });
+      if (/\bultimate\b/i.test(it[1]) || (arc.s & uMask)) return false;
+    }
     if (f.unreadOnly && state.progress[it[0]]) return false;
     return true;
   }
@@ -764,6 +773,11 @@
   /* ---------- layout shell: 'classic' (settings dropdown) or 'tabs' (X-Men style) ---------- */
   var PANES = ['app', 'paneReading', 'paneReviews', 'panel'];
 
+  function isTabbed() {
+    var l = state.settings.layout;
+    return l === 'tabs' || l === 'pull';
+  }
+
   function applyLayout() {
     var lay = state.settings.layout;
     var tabs = (lay === 'tabs' || lay === 'pull');
@@ -811,7 +825,7 @@
   }
 
   function jumpToIssue(k) {
-    if (state.settings.layout === 'tabs') switchTab('app');
+    if (isTabbed()) switchTab('app');
     setTimeout(function () {
       var n = document.querySelector('.row[data-k="' + k + '"]');
       if (n) { n.scrollIntoView({ block: 'center' }); flash(n); }
@@ -1069,7 +1083,7 @@
     var onList = (name === 'app');
     fb.hidden = !onList; jb.hidden = !onList;
     var fsec2 = document.getElementById('filters');
-    if (state.settings.layout === 'tabs') fsec2.hidden = !onList;
+    if (isTabbed()) fsec2.hidden = !onList;
     else if (!onList) { fsec2.hidden = true; fb.setAttribute('aria-expanded', 'false'); }
     if (name === 'panel') paintPace();
     if (name === 'paneReading') renderReading();

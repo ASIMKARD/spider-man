@@ -454,3 +454,31 @@ img,svg,pre,table{max-width:100%}
 
 /* settings: monospace uppercase section labels */
 :root[data-skin="pull"] .panel .frow{padding:12px 14px;border-bottom:1px solid var(--rule)}
+
+/* ---------- filters, Pull List skin ---------- */
+:root[data-skin="pull"] .filters{background:var(--surface);border-bottom:1px solid var(--rule);
+  padding:10px 14px 12px}
+:root[data-skin="pull"] .flabel{font-family:var(--mark);font-size:10.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--ink-soft)}
+:root[data-skin="pull"] .filters .chip{border-radius:999px;border:1.5px solid var(--ink);
+  background:var(--surface);color:var(--ink);font-size:13px;font-weight:600;padding:7px 15px}
+:root[data-skin="pull"] .filters .chip[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+:root[data-skin="pull"] .filters .chip[aria-pressed="false"]{opacity:.85}
+:root[data-skin="pull"] .search{border:1.5px solid var(--ink);border-radius:999px;
+  background:var(--surface);padding:9px 15px;font-size:14px}
+:root[data-skin="pull"] .search::placeholder{color:var(--ink-soft);opacity:.75}
+:root[data-skin="pull"] #depthChips .chip{border-radius:0;border-right-width:0}
+:root[data-skin="pull"] #depthChips .chip:first-child{border-radius:999px 0 0 999px}
+:root[data-skin="pull"] #depthChips .chip:last-child{border-radius:0 999px 999px 0;border-right-width:1.5px}
+:root[data-skin="pull"] .tally{font-family:var(--mark);font-size:11px;color:var(--ink-soft);margin-left:auto}
+:root[data-skin="pull"] .linkbtn{font-family:var(--mark);font-size:11px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--ink-soft)}
+:root[data-skin="pull"] #eraSel{border:1.5px solid var(--ink);border-radius:999px;
+  background:var(--surface);padding:7px 12px;font-size:13px}
+
+
+/* Pull List skin: search leads the filter stack, as it does on X-Men */
+:root[data-skin="pull"] .filters{display:flex;flex-direction:column;gap:9px}
+:root[data-skin="pull"] .filters .frow:has(#search){order:-1}
+:root[data-skin="pull"] .filters .frow:has(#search) .flabel{display:none}
+:root[data-skin="pull"] .filters .frow:has(#search) .search{flex:1 1 100%;min-width:0}
