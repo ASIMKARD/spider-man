@@ -31,7 +31,7 @@
 <header class="phead" id="phead" hidden>
   <h1 class="ptitle">The Pull List</h1>
   <p class="psub">Offline Edition &mdash; progress saves in this browser only, no account needed</p>
-  <p class="pmeta">Spider-Man reading tracker &middot; 1962&ndash;2026 &middot; <b id="buildtag">build v20</b></p>
+  <p class="pmeta">Spider-Man reading tracker &middot; 1962&ndash;2026 &middot; <b id="buildtag">build v22</b></p>
   <div class="pbar2"><i id="pfill2" style="width:0%"></i></div>
   <div class="pstats"><span id="pread">0 / 0 read</span><span id="premain">&mdash;</span></div>
 </header>
@@ -553,9 +553,6 @@
     var fWrap = document.getElementById('fmtChips');
     fWrap.appendChild(chip('Annuals', f.annuals !== false, function (on) { f.annuals = on; }));
     // Ultimate is technically a spin-off type, but it is a large enough body of
-    // work (both the 2000 Bendis line and the 2024 Earth-6160 relaunch) to earn
-    // its own switch rather than being buried in the character chips
-    fWrap.appendChild(chip('Ultimate', f.ultimate !== false, function (on) { f.ultimate = on; }));
 
     var sWrap = document.getElementById('strandChips');
     D.strands.forEach(function (name, i) {
@@ -563,6 +560,10 @@
         if (on) f.strands |= (1 << i); else f.strands &= ~(1 << i);
       }, 'strand'));
     });
+    // Ultimate lives with the characters rather than Format: it reads as a
+    // corner of the universe, not a publication format. Its own boolean, so
+    // the all/none strand shortcuts deliberately leave it alone.
+    sWrap.appendChild(chip('Ultimate', f.ultimate !== false, function (on) { f.ultimate = on; }));
     document.getElementById('strandAll').addEventListener('click', function () {
       f.strands = ALLSTRANDS; syncStrandChips(); saveFilters(); applyFilters();
     });
