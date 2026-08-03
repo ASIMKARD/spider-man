@@ -280,10 +280,15 @@ body{padding-bottom:env(safe-area-inset-bottom,0px)}
 .pbar2 i{display:block;height:100%;background:var(--action);transition:width .25s ease}
 .pstats{display:flex;justify-content:space-between;gap:10px;margin-top:6px;
   font-family:var(--mark);font-size:12.5px;color:var(--ink-soft);flex-wrap:wrap}
-:root[data-layout="tabs"] .tabs{top:0}
+:root{--hud-h:30px}
+/* HUD: the progress readout pins with the tab bar instead of scrolling
+   half-under it, which is what made the top of the screen look clipped */
+:root[data-layout="tabs"] .pstats{position:sticky;top:0;z-index:21;margin:0;
+  padding:7px 14px;background:var(--tint);border-bottom:1px solid var(--rule)}
+:root[data-layout="tabs"] .tabs{top:var(--hud-h)}
 :root[data-layout="tabs"] .era-head,
 :root[data-layout="tabs"] .filters,
-:root[data-layout="tabs"] .mini{top:40px}
+:root[data-layout="tabs"] .mini{top:calc(var(--hud-h) + 40px)}
 
 /* ---------- Reading: focused stepper ---------- */
 .rdr{max-width:640px;margin:0 auto;padding:22px 16px;text-align:center}
@@ -352,7 +357,7 @@ img,svg,pre,table{max-width:100%}
 .period-head{display:flex;align-items:center;gap:10px;width:100%;text-align:left;
   font:inherit;cursor:pointer;padding:13px 14px;background:var(--tint);border:0;
   border-left:5px solid var(--action);position:sticky;top:0;z-index:12}
-:root[data-layout="tabs"] .period-head{top:40px}
+:root[data-layout="tabs"] .period-head{top:calc(var(--hud-h) + 40px)}
 .period[aria-expanded="false"] .chev{transform:rotate(-90deg)}
 .ptext{display:grid;gap:2px;min-width:0;flex:1 1 auto}
 .pname{font-family:var(--display),system-ui,sans-serif;font-size:16px;letter-spacing:.02em;
@@ -366,7 +371,7 @@ img,svg,pre,table{max-width:100%}
 /* era headers become second-tier inside a period */
 .period .era-head{padding-left:20px;font-size:12px}
 .period .era-head h2{font-size:11.5px;opacity:.9}
-:root[data-layout="tabs"] .period .era-head{top:88px}
+:root[data-layout="tabs"] .period .era-head{top:calc(var(--hud-h) + 88px)}
 
 /* filters sit open on the Checklist in tabs mode (X-Men behaviour), so they
    scroll with the list rather than pinning under the tab bar */
@@ -482,3 +487,6 @@ img,svg,pre,table{max-width:100%}
 :root[data-skin="pull"] .filters .frow:has(#search){order:-1}
 :root[data-skin="pull"] .filters .frow:has(#search) .flabel{display:none}
 :root[data-skin="pull"] .filters .frow:has(#search) .search{flex:1 1 100%;min-width:0}
+
+/* Elseworlds story eras (35-44): one plum family, distinct from the eight periods */
+:root{--e35-t:#F6F2F7;--e35-a:#8A5298;--e35-d:#4D3154;--e36-t:#F6F2F7;--e36-a:#895298;--e36-d:#4C3154;--e37-t:#F6F2F7;--e37-a:#875298;--e37-d:#4B3154;--e38-t:#F6F2F7;--e38-a:#855298;--e38-d:#4A3154;--e39-t:#F6F2F7;--e39-a:#835298;--e39-d:#493154;--e40-t:#F6F2F7;--e40-a:#815298;--e40-d:#483154;--e41-t:#F6F2F7;--e41-a:#7F5298;--e41-d:#473154;--e42-t:#F5F2F7;--e42-a:#7E5298;--e42-d:#463154;--e43-t:#F5F2F7;--e43-a:#7C5298;--e43-d:#453154;--e44-t:#F5F2F7;--e44-a:#7A5298;--e44-d:#453154}

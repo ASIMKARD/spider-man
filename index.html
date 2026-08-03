@@ -31,7 +31,7 @@
 <header class="phead" id="phead" hidden>
   <h1 class="ptitle">The Pull List</h1>
   <p class="psub">Offline Edition &mdash; progress saves in this browser only, no account needed</p>
-  <p class="pmeta">Spider-Man reading tracker &middot; 1962&ndash;2026 &middot; <b id="buildtag">build v22</b></p>
+  <p class="pmeta">Spider-Man reading tracker &middot; 1962&ndash;2026 &middot; <b id="buildtag">build v23</b></p>
   <div class="pbar2"><i id="pfill2" style="width:0%"></i></div>
   <div class="pstats"><span id="pread">0 / 0 read</span><span id="premain">&mdash;</span></div>
 </header>
@@ -215,6 +215,11 @@
   }
 
   /* ---------- ordering ---------- */
+  var IDX = {};
+  (D.issues || []).forEach(function (r, i) { IDX[r[0]] = i; });
+
+  var ELSE_P = (D.periods || []).length - 1;
+
   function ordered() {
     var alt = state.settings.cloneOrder === 'published';
     var tl = state.settings.viewOrder === 'timeline';
@@ -226,6 +231,12 @@
     return D.issues.slice().sort(function (a, b) {
       if (tl && a[2] !== b[2]) return a[2] - b[2];
       if (!tl && pOf[a[0]] !== pOf[b[0]]) return pOf[a[0]] - pOf[b[0]];
+      // Elseworlds rows are grouped by story, so a story's issues must sort
+      // together rather than scattering across sixty years of cover dates
+      if (!tl && pOf[a[0]] === ELSE_P) {
+        var ea = eraOf(a), eb = eraOf(b);
+        if (ea !== eb) return ea - eb;
+      }
       var ka = alt && a.length > 8 ? a[8] : a[0];
       var kb = alt && b.length > 8 ? b[8] : b[0];
       return ka - kb;
@@ -330,8 +341,9 @@
         frag.appendChild(psec);
       }
 
-      if (arc.e !== curEra) {
-        curEra = arc.e; curArc = -1;
+      var _era = eraOf(it);
+      if (_era !== curEra) {
+        curEra = _era; curArc = -1;
         var era = D.eras[curEra];
         var sec = el('section', 'era');
         sec.dataset.e = curEra;
@@ -676,7 +688,7 @@
 
   function matches(it, arc) {
     var f = state.filters, isGap = !!(it[6] & GAP);
-    if (f.era != null && arc.e !== f.era) return false;
+    if (f.era != null && eraOf(it) !== f.era) return false;
     if (!(arc.s & f.strands)) return false;
     if (!f.alt && (it[6] & ALT)) return false;
     if (f.q) {
@@ -780,6 +792,12 @@
   /* ---------- layout shell: 'classic' (settings dropdown) or 'tabs' (X-Men style) ---------- */
   var PANES = ['app', 'paneReading', 'paneReviews', 'panel'];
 
+  function eraOf(it) {
+    var i = IDX[it[0]];
+    if (D.issueEra && i !== undefined) return D.issueEra[i];
+    return D.arcs[it[2]].e;
+  }
+
   function isTabbed() {
     var l = state.settings.layout;
     return l === 'tabs' || l === 'pull';
@@ -867,9 +885,9 @@
 
     host.appendChild(el('p', 'rcount', (rdrIdx + 1).toLocaleString() + ' of ' + list.length.toLocaleString()));
 
-    var era = D.eras[arc.e] || { n: '' };
+    var era = D.eras[eraOf(it)] || { n: '' };
     var pill = el('span', 'rpill', era.n.replace(/\s*\(.*\)\s*$/, ''));
-    pill.style.background = 'var(--e' + arc.e + '-a)';
+    pill.style.background = 'var(--e' + eraOf(it) + '-a)';
     var pw = el('div', 'rpillwrap'); pw.appendChild(pill); host.appendChild(pw);
 
     host.appendChild(el('h2', 'rtitle', it[1]));
