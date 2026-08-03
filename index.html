@@ -31,7 +31,7 @@
 <header class="phead" id="phead" hidden>
   <h1 class="ptitle">The Pull List</h1>
   <p class="psub">Offline Edition &mdash; progress saves in this browser only, no account needed</p>
-  <p class="pmeta">Spider-Man reading tracker &middot; 1962&ndash;2026 &middot; <b id="buildtag">build v14</b></p>
+  <p class="pmeta">Spider-Man reading tracker &middot; 1962&ndash;2026 &middot; <b id="buildtag">build v16</b></p>
   <div class="pbar2"><i id="pfill2" style="width:0%"></i></div>
   <div class="pstats"><span id="pread">0 / 0 read</span><span id="premain">&mdash;</span></div>
 </header>
@@ -135,7 +135,7 @@
   var ALLSTRANDS = (1 << D.strands.length) - 1;
   var state = {
     progress: {},
-    settings: { theme: 'spidey', eraScheme: 'split', cloneOrder: 'epic', viewOrder: 'reading', layout: 'tabs', tab: 'app', collapsed: [], pcollapsed: [] },
+    settings: { theme: 'spidey', eraScheme: 'split', cloneOrder: 'epic', viewOrder: 'reading', layout: 'tabs', lv: 2, tab: 'app', collapsed: [], pcollapsed: [] },
     filters: { depth: 'everything', types: D.types.slice(), strands: ALLSTRANDS, sv: D.strands.length, mo: ['M','O'], annuals: true,
                unreadOnly: false, alt: true, q: '' }
   };
@@ -476,18 +476,19 @@
   }
 
   function tallyEras() {
-    document.querySelectorAll('.period').forEach(function (sec) {
-      var rows = sec.querySelectorAll('.row:not(.gap)');
-      var done = 0;
-      rows.forEach(function (r) { if (r.dataset.s === 'read' || r.dataset.s === 'skip') done++; });
-      if (sec._count) sec._count.textContent = done + ' / ' + rows.length;
-    });
-    document.querySelectorAll('.era').forEach(function (sec) {
-      var rows = sec.querySelectorAll('.row:not(.gap)');
-      var done = 0;
-      rows.forEach(function (r) { if (r.dataset.s === 'read' || r.dataset.s === 'skip') done++; });
-      if (sec._count) sec._count.textContent = done + ' / ' + rows.length;
-    });
+    function tally(sel) {
+      document.querySelectorAll(sel).forEach(function (sec) {
+        var done = 0, total = 0;
+        sec.querySelectorAll('.row:not(.gap)').forEach(function (r) {
+          if (r.hidden) return;            // count only what the filters left
+          total++;
+          if (r.dataset.s === 'read' || r.dataset.s === 'skip') done++;
+        });
+        if (sec._count) sec._count.textContent = done + ' / ' + total;
+      });
+    }
+    tally('.period');
+    tally('.era');
   }
 
 
@@ -696,6 +697,12 @@
     document.querySelectorAll('.era').forEach(function (e) {
       e.hidden = !e.querySelector('.arc:not([hidden])');
     });
+    // period bands were added after this function was written and never got
+    // the same pass — a filtered-out band left an empty header behind
+    document.querySelectorAll('.period').forEach(function (p) {
+      p.hidden = !p.querySelector('.era:not([hidden])');
+    });
+    tallyEras();
     var t = document.getElementById('tally');
     if (t) t.textContent = shown.toLocaleString() + ' shown';
     var app = document.getElementById('app');
@@ -758,8 +765,12 @@
   var PANES = ['app', 'paneReading', 'paneReviews', 'panel'];
 
   function applyLayout() {
-    var tabs = state.settings.layout === 'tabs';
+    var lay = state.settings.layout;
+    var tabs = (lay === 'tabs' || lay === 'pull');
     document.documentElement.dataset.layout = tabs ? 'tabs' : 'classic';
+    // 'pull' is the X-Men Pull List look: same tab structure, different skin
+    if (lay === 'pull') document.documentElement.dataset.skin = 'pull';
+    else document.documentElement.removeAttribute('data-skin');
     document.getElementById('tabs').hidden = !tabs;
     document.getElementById('phead').hidden = !tabs;
     var tb = document.querySelector('.topbar');
@@ -892,7 +903,7 @@
 
   function buildSettingsUI() {
     seg(document.getElementById('segLayout'),
-      [['classic', 'classic'], ['tabs', 'tabbed']],
+      [['compact', 'compact'], ['tabs', 'tabbed'], ['pull', 'classic']],
       function () { return state.settings.layout; },
       function (v) { state.settings.layout = v; save(K.settings, state.settings); applyLayout(); });
     seg(document.getElementById('segDensity'),
@@ -1299,7 +1310,17 @@
         if (mv) { save(K.progress, { p: state.progress, b: bookmarks });
                   setTimeout(function () { toast(mv + ' marks moved to their new positions.'); }, 1200); }
       }
-      state.settings = Object.assign(state.settings, r[1] || {});
+      var savedSettings = r[1] || {};
+      state.settings = Object.assign(state.settings, savedSettings);
+      // layout vocabulary changed: 'classic' used to mean the topbar+dropdown
+      // shell, which is now 'compact'; 'classic' is the Pull List skin.
+      // Test the RAW saved object — the defaults already carry lv:2, so the
+      // merged value would always look migrated.
+      if (savedSettings.lv !== 2) {
+        if (state.settings.layout === 'classic') state.settings.layout = 'compact';
+        state.settings.lv = 2;
+        save(K.settings, state.settings);
+      }
       var savedF = r[2] || {};
       var sv = (typeof savedF.sv === 'number') ? savedF.sv
              : (savedF.strands != null ? 15 : D.strands.length);
