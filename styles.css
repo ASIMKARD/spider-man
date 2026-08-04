@@ -532,3 +532,23 @@ img,svg,pre,table{max-width:100%}
 :root[data-skin="pull"] span[role="group"]{display:block}
 :root[data-skin="pull"] .search{display:block;width:100%;margin:0 0 10px}
 :root[data-skin="pull"] .tally{display:block;text-align:right;margin:4px 0 0}
+
+
+/* ---------- tabbed mode: nothing follows the scroll either ----------
+   Same treatment as the classic skin. This selector covers both, since the
+   classic skin also runs on the tabbed shell. Compact keeps its sticky topbar. */
+:root[data-layout="tabs"] .tabs,
+:root[data-layout="tabs"] .pstats,
+:root[data-layout="tabs"] .period-head,
+:root[data-layout="tabs"] .era-head,
+:root[data-layout="tabs"] .arc-head,
+:root[data-layout="tabs"] .mini,
+:root[data-layout="tabs"] .filters{position:static}
+
+/* ---------- classic skin: depth control on one line ----------
+   "Barebones · 75 / Essential · 508 / Everything · 4,721" wrapped onto three
+   rows; as one segmented control the three share the width evenly instead. */
+:root[data-skin="pull"] #depthChips{display:flex;flex-wrap:nowrap;width:100%;gap:0}
+:root[data-skin="pull"] #depthChips .chip{flex:1 1 0;min-width:0;margin:0;
+  font-size:11px;letter-spacing:0;padding:8px 3px;text-align:center;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
