@@ -331,7 +331,8 @@ img,svg,pre,table{max-width:100%}
 /* [hidden] is a UA rule (display:none) and loses to any author display rule,
    so elements given display:flex must opt in explicitly or JS .hidden = true
    silently does nothing. This is why the topbar stayed visible in tabs mode. */
-.topbar[hidden],.phead[hidden],.tabs[hidden],.pane[hidden],.panel[hidden]{display:none !important}
+.topbar[hidden],.phead[hidden],.tabs[hidden],.pane[hidden],.panel[hidden],
+.filters[hidden],.period[hidden],.era[hidden],.arc[hidden],.row[hidden]{display:none !important}
 
 .era-head .n,.count{overflow:hidden;text-overflow:ellipsis}
 
@@ -508,3 +509,26 @@ img,svg,pre,table{max-width:100%}
 :root[data-skin="pull"] .filters .chip{padding:6px 13px;font-size:12.5px}
 :root[data-skin="pull"] .filters .chip[data-kind="strand"]{font-size:12px;padding:6px 11px}
 :root[data-skin="pull"] .tally{flex:1 1 100%;text-align:right;margin:0}
+
+
+/* ---------- classic skin: nothing follows the scroll ----------
+   The tab bar and the era/period headers were sticky, so they tracked down the
+   page as you read. In this skin everything scrolls away with the content. */
+:root[data-skin="pull"] .tabs,
+:root[data-skin="pull"] .pstats,
+:root[data-skin="pull"] .period-head,
+:root[data-skin="pull"] .era-head,
+:root[data-skin="pull"] .arc-head,
+:root[data-skin="pull"] .mini,
+:root[data-skin="pull"] .filters{position:static}
+
+/* ---------- classic skin: filter groups stack cleanly ---------- */
+:root[data-skin="pull"] .filters{display:block;padding:12px 14px 18px}
+:root[data-skin="pull"] .frow{display:block;margin:0 0 12px}
+:root[data-skin="pull"] .frow:last-child{margin-bottom:0}
+:root[data-skin="pull"] .flabel{display:block;width:auto;margin:0 0 6px}
+:root[data-skin="pull"] .frow > .chip,
+:root[data-skin="pull"] .frow > span[role="group"] > .chip{margin:0 5px 5px 0}
+:root[data-skin="pull"] span[role="group"]{display:block}
+:root[data-skin="pull"] .search{display:block;width:100%;margin:0 0 10px}
+:root[data-skin="pull"] .tally{display:block;text-align:right;margin:4px 0 0}
