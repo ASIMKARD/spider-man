@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#1959A7">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Spider-Man">
 <link rel="manifest" href="./manifest.json">
 <link rel="icon" href="./icons/icon-192.png">
@@ -31,7 +31,7 @@
 <header class="phead" id="phead" hidden>
   <h1 class="ptitle">The Pull List</h1>
   <p class="psub">Offline Edition &mdash; progress saves in this browser only, no account needed</p>
-  <p class="pmeta">Spider-Man reading tracker &middot; 1962&ndash;2026 &middot; <b id="buildtag">build v25</b></p>
+  <p class="pmeta">Spider-Man reading tracker &middot; 1962&ndash;2026 &middot; <b id="buildtag">build v26</b></p>
   <div class="pbar2"><i id="pfill2" style="width:0%"></i></div>
   <div class="pstats"><span id="pread">0 / 0 read</span><span id="premain">&mdash;</span></div>
 </header>
@@ -803,6 +803,19 @@
     return l === 'tabs' || l === 'pull';
   }
 
+  // The skin is pure CSS. If styles.css on the server predates v16 the rules
+  // simply are not there and "classic" silently renders as the plain tabbed
+  // shell — which looks like a broken feature rather than a stale file.
+  function skinCssPresent() {
+    var probe = document.createElement('div');
+    probe.setAttribute('data-skinprobe', '');
+    probe.style.cssText = 'position:absolute;left:-9999px';
+    document.body.appendChild(probe);
+    var got = getComputedStyle(probe).getPropertyValue('--skin-ok').trim();
+    probe.remove();
+    return got === '1';
+  }
+
   function applyLayout() {
     var lay = state.settings.layout;
     var tabs = (lay === 'tabs' || lay === 'pull');
@@ -821,6 +834,13 @@
     if (tabs) paintPullHead();
     var sb = document.getElementById('setBtn');
     if (sb) sb.hidden = tabs;
+    if (state.settings.layout === 'pull' && !skinCssPresent()) {
+      setTimeout(function () {
+        toast('Classic skin needs the current styles.css — re-upload it.', 'Use tabbed', function () {
+          state.settings.layout = 'tabs'; save(K.settings, state.settings); applyLayout();
+        });
+      }, 600);
+    }
     if (tabs) { switchTab(state.settings.tab || 'app'); }
     else {
       document.getElementById('app').hidden = false;

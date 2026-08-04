@@ -490,3 +490,21 @@ img,svg,pre,table{max-width:100%}
 
 /* Elseworlds story eras (35-44): one plum family, distinct from the eight periods */
 :root{--e35-t:#F6F2F7;--e35-a:#8A5298;--e35-d:#4D3154;--e36-t:#F6F2F7;--e36-a:#895298;--e36-d:#4C3154;--e37-t:#F6F2F7;--e37-a:#875298;--e37-d:#4B3154;--e38-t:#F6F2F7;--e38-a:#855298;--e38-d:#4A3154;--e39-t:#F6F2F7;--e39-a:#835298;--e39-d:#493154;--e40-t:#F6F2F7;--e40-a:#815298;--e40-d:#483154;--e41-t:#F6F2F7;--e41-a:#7F5298;--e41-d:#473154;--e42-t:#F5F2F7;--e42-a:#7E5298;--e42-d:#463154;--e43-t:#F5F2F7;--e43-a:#7C5298;--e43-d:#453154;--e44-t:#F5F2F7;--e44-a:#7A5298;--e44-d:#453154}
+
+/* Version beacon: lets the app detect at runtime whether this stylesheet is
+   new enough to contain the classic skin, instead of failing silently. */
+[data-skinprobe]{--skin-ok:1}
+
+
+/* ---------- classic skin: filter panel sizing ----------
+   PRIORITY and FORMAT share one .frow, so their labels collided mid-row and
+   the last chip group was clipped by the sticky panel. Each label now takes a
+   full line, and the panel scrolls with the list rather than pinning over it —
+   it belongs to the checklist, not to every screen. */
+:root[data-skin="pull"] .filters{position:static;max-height:none;overflow:visible;
+  padding:12px 14px 16px}
+:root[data-skin="pull"] .frow{align-items:flex-start;gap:8px 6px}
+:root[data-skin="pull"] .flabel{flex:1 1 100%;width:auto;margin:2px 0 0}
+:root[data-skin="pull"] .filters .chip{padding:6px 13px;font-size:12.5px}
+:root[data-skin="pull"] .filters .chip[data-kind="strand"]{font-size:12px;padding:6px 11px}
+:root[data-skin="pull"] .tally{flex:1 1 100%;text-align:right;margin:0}
