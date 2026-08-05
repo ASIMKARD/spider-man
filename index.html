@@ -31,7 +31,7 @@
 <header class="phead" id="phead" hidden>
   <h1 class="ptitle">The Pull List</h1>
   <p class="psub">Offline Edition &mdash; progress saves in this browser only, no account needed</p>
-  <p class="pmeta">Spider-Man reading tracker &middot; 1962&ndash;2026 &middot; <b id="buildtag">build v28</b></p>
+  <p class="pmeta">Spider-Man reading tracker &middot; 1962&ndash;2026 &middot; <b id="buildtag">build v30</b></p>
   <div class="pbar2"><i id="pfill2" style="width:0%"></i></div>
   <div class="pstats"><span id="pread">0 / 0 read</span><span id="premain">&mdash;</span></div>
 </header>
@@ -78,9 +78,7 @@
 </section>
 
 <section class="panel pane" id="panel" hidden role="tabpanel" aria-label="Settings">
-  <div class="frow"><span class="flabel">Sections</span>
-    <button class="linkbtn" id="collapseAll" type="button">Collapse all</button>
-    <button class="linkbtn" id="expandAll" type="button">Expand all</button></div>
+  <h3 class="shead">Display</h3>
   <div class="frow"><span class="flabel">Layout</span><span class="seg" id="segLayout"></span></div>
   <div class="frow"><span class="flabel">Density</span><span class="seg" id="segDensity"></span>
     <span class="flabel" style="width:auto">Text</span><span class="seg" id="segFont"></span></div>
@@ -91,12 +89,41 @@
     <button class="chip" id="badgeChip" type="button" aria-pressed="true">Badges</button>
     <button class="chip" id="dysChip" type="button" aria-pressed="false">Dyslexia font</button>
     <button class="chip" id="tapChip" type="button" aria-pressed="false">Large tap targets</button>
-    <button class="chip" id="miniChip" type="button" aria-pressed="true">Mini progress bar</button></div>
+    <button class="chip" id="miniChip" type="button" aria-pressed="true">Mini progress bar</button>
+    <button class="chip" id="comboChip" type="button" aria-pressed="false">Combo badge</button>
+    <button class="chip" id="revChip" type="button" aria-pressed="false">Newest era first</button></div>
+
+  <h3 class="shead">Reading behaviour</h3>
+  <div class="frow"><span class="flabel">Rows</span>
+    <button class="chip" id="skipChip" type="button" aria-pressed="false">Hide skipped</button>
+    <button class="chip" id="notesChip" type="button" aria-pressed="false">Notes only</button>
+    <button class="chip" id="revealChip" type="button" aria-pressed="false">Tap to reveal notes</button>
+    <button class="chip" id="autoChip" type="button" aria-pressed="false">Jump to first unread</button></div>
   <div class="frow"><span class="flabel">Pace</span><span class="seg" id="segPace"></span>
     <span class="pace" id="paceOut">—</span></div>
+
+  <h3 class="shead">Touch controls</h3>
+  <div class="frow"><span class="flabel">Gestures</span>
+    <button class="chip" id="swipeChip" type="button" aria-pressed="false">Swipe to mark</button>
+    <button class="chip" id="pressChip" type="button" aria-pressed="false">Long-press bulk-mark</button></div>
+
+  <h3 class="shead">Bulk actions</h3>
+  <div class="frow"><span class="flabel">Sections</span>
+    <button class="linkbtn" id="collapseAll" type="button">Collapse all</button>
+    <button class="linkbtn" id="expandAll" type="button">Expand all</button></div>
+  <div class="frow"><span class="flabel">Mark era</span>
+    <select class="search" id="bulkEra" aria-label="Era to mark"></select>
+    <button class="linkbtn" id="bulkEraRead" type="button">mark read</button>
+    <button class="linkbtn" id="bulkEraUnread" type="button">mark unread</button></div>
+  <div class="frow"><span class="flabel">Mark range</span>
+    <select class="search" id="bulkFrom" aria-label="Range start"></select>
+    <span class="flabel" style="width:auto">through</span>
+    <select class="search" id="bulkTo" aria-label="Range end"></select>
+    <button class="linkbtn" id="bulkRangeRead" type="button">mark read</button></div>
   <div class="frow"><span class="flabel">Presets</span>
     <span class="presetRow" id="presetRow"></span>
     <button class="linkbtn" id="savePreset" type="button">save current filters</button></div>
+  <h3 class="shead">Data</h3>
   <div class="frow"><span class="flabel">Data</span>
     <button class="linkbtn" id="aboutBtn" type="button">about &amp; legend</button>
     <button class="linkbtn" id="bmBtn" type="button">bookmarks</button>
@@ -148,7 +175,9 @@
   };
   var PACE = [['light', 5], ['steady', 12], ['heavy', 25], ['marathon', 50]];
   var view = { density: 'normal', font: 'md', mark: 'box', table: false, badges: true,
-               dys: false, tap: false, mini: true, pace: 12, presets: [] };
+               dys: false, tap: false, mini: true, pace: 12, presets: [],
+               combo: false, rev: false, hideSkip: false, notesOnly: false,
+               reveal: false, auto: false, swipe: false, press: false };
   var reviews = {}, bookmarks = [];
 
   /* ---------- storage shim ----------
@@ -230,7 +259,9 @@
     D.issues.forEach(function (r, i) { pOf[r[0]] = PI[i] || 0; });
     return D.issues.slice().sort(function (a, b) {
       if (tl && a[2] !== b[2]) return a[2] - b[2];
-      if (!tl && pOf[a[0]] !== pOf[b[0]]) return pOf[a[0]] - pOf[b[0]];
+      if (!tl && pOf[a[0]] !== pOf[b[0]]) {
+        return view.rev ? pOf[b[0]] - pOf[a[0]] : pOf[a[0]] - pOf[b[0]];
+      }
       // Elseworlds rows are grouped by story, so a story's issues must sort
       // together rather than scattering across sixty years of cover dates
       if (!tl && pOf[a[0]] === ELSE_P) {
@@ -239,7 +270,7 @@
       }
       var ka = alt && a.length > 8 ? a[8] : a[0];
       var kb = alt && b.length > 8 ? b[8] : b[0];
-      return ka - kb;
+      return (!tl && view.rev) ? kb - ka : ka - kb;
     });
   }
 
@@ -427,16 +458,8 @@
 
     var btn = el('button', 'mark', MARKS[view.mark][st]);
     btn.type = 'button';
+    btn.dataset.act = 'mark';
     btn.setAttribute('aria-label', it[1] + ' \u2014 ' + LABEL[st]);
-    btn.addEventListener('click', function () {
-      var next = CYCLE[(CYCLE.indexOf(row.dataset.s) + 1) % 4];
-      row.dataset.s = next;
-      btn.textContent = MARKS[view.mark][next];
-      btn.setAttribute('aria-label', it[1] + ' \u2014 ' + LABEL[next]);
-      if (next === 'unread') delete state.progress[it[0]]; else state.progress[it[0]] = next;
-      saveProgress();
-      paintProgress(); tallyEras();
-    });
     row.appendChild(btn);
 
     row.appendChild(el('span', 'title', it[1]));
@@ -454,18 +477,13 @@
     bm.type = 'button';
     bm.setAttribute('aria-label', 'Bookmark ' + it[1]);
     bm.setAttribute('aria-pressed', bookmarks.indexOf(it[0]) !== -1 ? 'true' : 'false');
-    bm.addEventListener('click', function () {
-      var i = bookmarks.indexOf(it[0]);
-      if (i === -1) bookmarks.push(it[0]); else bookmarks.splice(i, 1);
-      bm.setAttribute('aria-pressed', i === -1 ? 'true' : 'false');
-      saveProgress();
-    });
+    bm.dataset.act = 'bm';
     badges.appendChild(bm);
 
     var rv = el('button', 'b', '\u270E');
     rv.type = 'button';
     rv.setAttribute('aria-label', 'Review ' + it[1]);
-    rv.addEventListener('click', function () { reviewEditor(row, it); });
+    rv.dataset.act = 'rv';
     badges.appendChild(rv);
     if (reviews[it[0]]) row.classList.add('reviewed');
 
@@ -483,14 +501,53 @@
     var b = el('button', 'b note', label);
     b.type = 'button';
     b.setAttribute('aria-expanded', 'false');
-    b.addEventListener('click', function () {
-      var open = b.getAttribute('aria-expanded') === 'true';
-      b.setAttribute('aria-expanded', open ? 'false' : 'true');
-      if (open) { if (row._pop) { row._pop.remove(); row._pop = null; } return; }
-      var p = el('p', 'notepop', text);
-      row.after(p); row._pop = p;
-    });
+    b.dataset.act = 'note';
+    b.dataset.text = text;
     return b;
+  }
+
+  /* ---------- delegated row actions ----------
+     One listener on the list instead of three per row. At ~4,700 rows that is
+     ~14,000 closures removed, which is where the scroll cost was coming from.
+     Rows are rebuilt on every render, so per-row handlers were also being
+     re-created each time; a delegated handler survives re-renders. */
+  function wireRowActions() {
+    var host = document.getElementById('app');
+    if (!host || host._wired) return;
+    host._wired = true;
+    host.addEventListener('click', function (ev) {
+      var b = ev.target.closest('[data-act]');
+      if (!b || !host.contains(b)) return;
+      var row = b.closest('.row');
+      if (!row || !row._it) return;
+      var it = row._it, act = b.dataset.act;
+
+      if (act === 'mark') {
+        var next = CYCLE[(CYCLE.indexOf(row.dataset.s) + 1) % 4];
+        row.dataset.s = next;
+        b.textContent = MARKS[view.mark][next];
+        b.setAttribute('aria-label', it[1] + ' \u2014 ' + LABEL[next]);
+        if (next === 'unread') delete state.progress[it[0]]; else state.progress[it[0]] = next;
+        saveProgress();
+        paintProgress(); tallyEras();
+        return;
+      }
+      if (act === 'bm') {
+        var i = bookmarks.indexOf(it[0]);
+        if (i === -1) bookmarks.push(it[0]); else bookmarks.splice(i, 1);
+        b.setAttribute('aria-pressed', i === -1 ? 'true' : 'false');
+        saveProgress();
+        return;
+      }
+      if (act === 'rv') { reviewEditor(row, it); return; }
+      if (act === 'note') {
+        var open = b.getAttribute('aria-expanded') === 'true';
+        b.setAttribute('aria-expanded', open ? 'false' : 'true');
+        if (open) { if (row._pop) { row._pop.remove(); row._pop = null; } return; }
+        var p = el('p', 'notepop', b.dataset.text || '');
+        row.after(p); row._pop = p;
+      }
+    });
   }
 
   function tallyEras() {
@@ -708,6 +765,8 @@
       if (/\bultimate\b/i.test(it[1]) || (arc.s & uMask)) return false;
     }
     if (f.unreadOnly && state.progress[it[0]]) return false;
+    if (view.hideSkip && state.progress[it[0]] === 'skip') return false;
+    if (view.notesOnly && !it[7]) return false;
     return true;
   }
 
@@ -751,6 +810,8 @@
     r.dataset.badges = view.badges ? '1' : '0';
     r.dataset.dys = view.dys ? '1' : '0';
     r.dataset.tap = view.tap ? '1' : '0';
+    r.dataset.combo = view.combo ? '1' : '0';
+    r.dataset.reveal = view.reveal ? '1' : '0';
     r.style.setProperty('--dens', { compact: '4px', normal: '9px', roomy: '14px' }[view.density]);
     r.style.setProperty('--fs', { sm: '13.5px', md: '15px', lg: '17px' }[view.font]);
     var m = document.getElementById('mini');
@@ -989,9 +1050,12 @@
       PACE.map(function (p) { return [p[1], p[0]]; }),
       function () { return view.pace; }, function (v) { view.pace = v; });
 
+    // pure display toggles: flip the flag, repaint, done
     [['tableChip', 'table'], ['badgeChip', 'badges'], ['dysChip', 'dys'],
-     ['tapChip', 'tap'], ['miniChip', 'mini']].forEach(function (pair) {
+     ['tapChip', 'tap'], ['miniChip', 'mini'], ['comboChip', 'combo'],
+     ['revealChip', 'reveal']].forEach(function (pair) {
       var b = document.getElementById(pair[0]);
+      if (!b) return;
       b.setAttribute('aria-pressed', view[pair[1]] ? 'true' : 'false');
       b.addEventListener('click', function () {
         view[pair[1]] = !view[pair[1]];
@@ -999,6 +1063,139 @@
         saveView(); applyView();
       });
     });
+
+    // toggles that change which rows show, or their order — these need a
+    // re-filter, and reversing the era order needs a full re-render
+    [['skipChip', 'hideSkip', false], ['notesChip', 'notesOnly', false],
+     ['revChip', 'rev', true], ['autoChip', 'auto', null]].forEach(function (t) {
+      var b = document.getElementById(t[0]);
+      if (!b) return;
+      b.setAttribute('aria-pressed', view[t[1]] ? 'true' : 'false');
+      b.addEventListener('click', function () {
+        view[t[1]] = !view[t[1]];
+        b.setAttribute('aria-pressed', view[t[1]] ? 'true' : 'false');
+        saveView();
+        if (t[2] === true) { render(); applyFilters(); }
+        else if (t[2] === false) { applyFilters(); }
+        if (t[1] === 'auto' && view.auto) jumpFirstUnread();
+      });
+    });
+
+    /* ---------- bulk marking ---------- */
+    function eraRowsBetween(a, b) {
+      var lo = Math.min(a, b), hi = Math.max(a, b), out = [];
+      D.issues.forEach(function (it, i) {
+        if (it[6] & INERT) return;
+        var e = D.issueEra ? D.issueEra[i] : D.arcs[it[2]].e;
+        if (e >= lo && e <= hi) out.push(it[0]);
+      });
+      return out;
+    }
+
+    function bulkMark(keys, val) {
+      keys.forEach(function (k) {
+        if (val === null) delete state.progress[k]; else state.progress[k] = val;
+      });
+      saveProgress();
+      document.querySelectorAll('.row').forEach(function (r) {
+        var k = Number(r.dataset.k);
+        if (keys.indexOf(k) === -1) return;
+        var s = state.progress[k] || 'unread';
+        r.dataset.s = s;
+        var m = r.querySelector('[data-act="mark"]');
+        if (m) m.textContent = MARKS[view.mark][s];
+      });
+      paintProgress(); tallyEras(); applyFilters();
+      toast(keys.length.toLocaleString() + (val === null ? ' cleared.' : ' marked ' + val + '.'), 'undo',
+            function () { keys.forEach(function (k) { delete state.progress[k]; });
+                          saveProgress(); render(); applyFilters(); });
+    }
+
+    function fillEraSelects() {
+      ['bulkEra', 'bulkFrom', 'bulkTo'].forEach(function (id) {
+        var s = document.getElementById(id);
+        if (!s) return;
+        s.textContent = '';
+        D.eras.forEach(function (e, i) {
+          var o = document.createElement('option');
+          o.value = String(i); o.textContent = e.n;
+          s.appendChild(o);
+        });
+      });
+      var t = document.getElementById('bulkTo');
+      if (t) t.value = String(D.eras.length - 1);
+    }
+    fillEraSelects();
+
+    function onClick(id, fn) { var b = document.getElementById(id); if (b) b.addEventListener('click', fn); }
+    onClick('bulkEraRead',   function () { var i = +document.getElementById('bulkEra').value; bulkMark(eraRowsBetween(i, i), 'read'); });
+    onClick('bulkEraUnread', function () { var i = +document.getElementById('bulkEra').value; bulkMark(eraRowsBetween(i, i), null); });
+    onClick('bulkRangeRead', function () {
+      bulkMark(eraRowsBetween(+document.getElementById('bulkFrom').value,
+                              +document.getElementById('bulkTo').value), 'read');
+    });
+
+    /* ---------- touch: swipe to mark, long-press to bulk-mark ---------- */
+    [['swipeChip', 'swipe'], ['pressChip', 'press']].forEach(function (p) {
+      var b = document.getElementById(p[0]);
+      if (!b) return;
+      b.setAttribute('aria-pressed', view[p[1]] ? 'true' : 'false');
+      b.addEventListener('click', function () {
+        view[p[1]] = !view[p[1]];
+        b.setAttribute('aria-pressed', view[p[1]] ? 'true' : 'false');
+        saveView();
+      });
+    });
+
+    var host = document.getElementById('app');
+    if (host && !host._touch) {
+      host._touch = true;
+      var sx = 0, sy = 0, pressT = null, pressed = null;
+
+      host.addEventListener('touchstart', function (ev) {
+        var t = ev.touches[0]; sx = t.clientX; sy = t.clientY;
+        var head = ev.target.closest('.era-head, .arc-head, .period-head');
+        if (view.press && head) {
+          pressed = head;
+          pressT = setTimeout(function () {
+            var sec = head.closest('.era, .arc, .period');
+            var keys = [].map.call(sec.querySelectorAll('.row:not(.gap)'), function (r) { return Number(r.dataset.k); });
+            bulkMark(keys, 'read');
+            pressT = null;
+          }, 600);
+        }
+      }, { passive: true });
+
+      host.addEventListener('touchmove', function () {
+        if (pressT) { clearTimeout(pressT); pressT = null; }
+      }, { passive: true });
+
+      host.addEventListener('touchend', function (ev) {
+        if (pressT) { clearTimeout(pressT); pressT = null; }
+        if (!view.swipe) return;
+        var t = ev.changedTouches[0];
+        var dx = t.clientX - sx, dy = t.clientY - sy;
+        if (Math.abs(dx) < 60 || Math.abs(dy) > 40) return;
+        var row = ev.target.closest('.row');
+        if (!row || row.classList.contains('gap')) return;
+        var k = Number(row.dataset.k);
+        state.progress[k] = dx > 0 ? 'read' : 'skip';
+        row.dataset.s = state.progress[k];
+        var m = row.querySelector('[data-act="mark"]');
+        if (m) m.textContent = MARKS[view.mark][state.progress[k]];
+        saveProgress(); paintProgress(); tallyEras();
+      }, { passive: true });
+    }
+
+    function jumpFirstUnread() {
+      var rows = document.querySelectorAll('.row:not([hidden]):not(.gap)');
+      for (var i = 0; i < rows.length; i++) {
+        if (!state.progress[rows[i].dataset.k]) {
+          rows[i].scrollIntoView({ block: 'center' }); flash(rows[i]); return;
+        }
+      }
+      toast('Nothing unread in view.');
+    }
 
     document.querySelectorAll('#tabs .tab').forEach(function (t) {
       t.addEventListener('click', function () { switchTab(t.dataset.pane); });
@@ -1408,6 +1605,7 @@
       buildFilterUI();
       buildSettingsUI();
       render();
+      wireRowActions();
       applyFilters();
       applyLayout();
     });
