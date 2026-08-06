@@ -31,7 +31,7 @@
 <header class="phead" id="phead" hidden>
   <h1 class="ptitle">The Pull List</h1>
   <p class="psub">Offline Edition &mdash; progress saves in this browser only, no account needed</p>
-  <p class="pmeta">Spider-Man reading tracker &middot; 1962&ndash;2026 &middot; <b id="buildtag">build v30</b></p>
+  <p class="pmeta">Spider-Man reading tracker &middot; 1962&ndash;2026 &middot; <b id="buildtag">build v31</b></p>
   <div class="pbar2"><i id="pfill2" style="width:0%"></i></div>
   <div class="pstats"><span id="pread">0 / 0 read</span><span id="premain">&mdash;</span></div>
 </header>
@@ -82,6 +82,7 @@
   <div class="frow"><span class="flabel">Layout</span><span class="seg" id="segLayout"></span></div>
   <div class="frow"><span class="flabel">Density</span><span class="seg" id="segDensity"></span>
     <span class="flabel" style="width:auto">Text</span><span class="seg" id="segFont"></span></div>
+  <div class="frow"><span class="flabel">Paper</span><span class="swatches" id="bgRow"></span></div>
   <div class="frow"><span class="flabel">Marks</span><span class="seg" id="segMark"></span>
     <span class="flabel" style="width:auto">Era hues</span><span class="seg" id="segEraScheme"></span></div>
   <div class="frow"><span class="flabel">View</span>
@@ -177,7 +178,7 @@
   var view = { density: 'normal', font: 'md', mark: 'box', table: false, badges: true,
                dys: false, tap: false, mini: true, pace: 12, presets: [],
                combo: false, rev: false, hideSkip: false, notesOnly: false,
-               reveal: false, auto: false, swipe: false, press: false };
+               reveal: false, auto: false, swipe: false, press: false, bg: 0 };
   var reviews = {}, bookmarks = [];
 
   /* ---------- storage shim ----------
@@ -247,7 +248,7 @@
   var IDX = {};
   (D.issues || []).forEach(function (r, i) { IDX[r[0]] = i; });
 
-  var ELSE_P = (D.periods || []).length - 1;
+  var ELSE_P = (D.periods && D.periods.length) ? D.periods.length - 1 : -1;
 
   function ordered() {
     var alt = state.settings.cloneOrder === 'published';
@@ -333,7 +334,7 @@
       var arc = D.arcs[it[2]];
 
       var per = PIDX[it[0]];
-      if (D.periods && per !== curPer) {
+      if (D.periods && D.periods.length && per !== curPer) {
         curPer = per; curEra = -1; curArc = -1;
         var pd = D.periods[per];
         var psec = el('section', 'period');
@@ -812,6 +813,7 @@
     r.dataset.tap = view.tap ? '1' : '0';
     r.dataset.combo = view.combo ? '1' : '0';
     r.dataset.reveal = view.reveal ? '1' : '0';
+    r.dataset.bg = String(view.bg || 0);
     r.style.setProperty('--dens', { compact: '4px', normal: '9px', roomy: '14px' }[view.density]);
     r.style.setProperty('--fs', { sm: '13.5px', md: '15px', lg: '17px' }[view.font]);
     var m = document.getElementById('mini');
@@ -855,7 +857,7 @@
 
   function eraOf(it) {
     var i = IDX[it[0]];
-    if (D.issueEra && i !== undefined) return D.issueEra[i];
+    if (D.issueEra && D.issueEra.length && i !== undefined) return D.issueEra[i];
     return D.arcs[it[2]].e;
   }
 
@@ -1086,7 +1088,7 @@
       var lo = Math.min(a, b), hi = Math.max(a, b), out = [];
       D.issues.forEach(function (it, i) {
         if (it[6] & INERT) return;
-        var e = D.issueEra ? D.issueEra[i] : D.arcs[it[2]].e;
+        var e = (D.issueEra && D.issueEra.length) ? D.issueEra[i] : D.arcs[it[2]].e;
         if (e >= lo && e <= hi) out.push(it[0]);
       });
       return out;
@@ -1186,6 +1188,29 @@
         saveProgress(); paintProgress(); tallyEras();
       }, { passive: true });
     }
+
+    var BGS = ['default', 'warm', 'grey', 'rose', 'mint', 'sky', 'lilac'];
+    (function () {
+      var row = document.getElementById('bgRow');
+      if (!row) return;
+      BGS.forEach(function (name, i) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'swatch';
+        b.dataset.bg = String(i);
+        b.title = name;
+        b.setAttribute('aria-label', 'Paper: ' + name);
+        b.setAttribute('aria-pressed', view.bg === i ? 'true' : 'false');
+        b.addEventListener('click', function () {
+          view.bg = i;
+          row.querySelectorAll('.swatch').forEach(function (s) {
+            s.setAttribute('aria-pressed', s.dataset.bg === String(i) ? 'true' : 'false');
+          });
+          saveView(); applyView();
+        });
+        row.appendChild(b);
+      });
+    })();
 
     function jumpFirstUnread() {
       var rows = document.querySelectorAll('.row:not([hidden]):not(.gap)');
